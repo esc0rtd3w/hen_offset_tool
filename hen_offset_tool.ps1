@@ -53,6 +53,7 @@ if (-not $fwver) {
     } while (-not ($fwver -eq "480C" -or $fwver -eq "481C" -or $fwver -eq "482C" -or $fwver -eq "482D" -or $fwver -eq "483C" -or $fwver -eq "484C" -or $fwver -eq "484D" -or $fwver -eq "490C"))
 }
 
+Write-Host ""
 Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Loading offsets dictionary..."
 
 # Load offsets dictionary for the selected firmware version
@@ -410,8 +411,11 @@ $offsetsDictionary = @{
         "lv2_unk20" = "007F0190"
     }
 }
+Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Loading offsets dictionary...done"
+Write-Host ""
 
 # Define memory ranges for each section of the binary file
+Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Loading offset ranges..."
 $ranges = @(
     @{
         Name = "webkit_vsh_gadgets_1"
@@ -469,10 +473,12 @@ $ranges = @(
         End = 0x0010FFFF
     }
 )
+Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Loading offset ranges...done"
+Write-Host ""
 
 # Check if the selected firmware version is valid
 if (-not $offsetsDictionary.ContainsKey($fwver)) {
-    Write-Host "Error: Invalid firmware version. Available versions: $($offsetsDictionary.Keys -join ', ')"
+    Write-Host "Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Error: Invalid firmware version. Available versions: $($offsetsDictionary.Keys -join ', ')"
     exit 1
 }
 
@@ -480,13 +486,12 @@ if (-not $offsetsDictionary.ContainsKey($fwver)) {
 $currentDictionary = $offsetsDictionary.$fwver
 
 # Read binary file content into memory
-Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading binary file content..."
+Write-Host "*** THIS STEP MAY TAKE A WHILE DEPENDING ON THE SPEED OF YOUR COMPUTER ***"
+Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading binary file content into 0x4 byte chunks..."
 $fileContent = [System.IO.File]::ReadAllBytes($filename)
 
 # Search for gadget offsets in the binary file
 $foundOffsets = @()
-Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Getting binary file ready for scanning offset values..."
-
 function ByteSequenceEqual($a, $b) {
 	
 	# Check if the count of elements in arrays $a and $b are not equal
@@ -526,6 +531,10 @@ $chunkedFileContent = -join ($fileContent | % { '{0:X2}' -f $_ }) -split '(?<=\G
 
 # Search for each offset value in the offsets dictionary
 $summaryTable = @()
+Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading binary file content in 0x4 byte chunks...done"
+Write-Host ""
+Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for gadgets..."
+Write-Host ""
 
 # Loop through each offset in the dictionary
 foreach ($offset in $currentDictionary.GetEnumerator()) {
@@ -571,6 +580,7 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 	# Display the total number of instances found for the current offset
     $formattedCount = '{0:d}' -f $count
     Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Found $formattedCount matches for $($offset.Name)."
+	Write-Host ""
 
 	# Add a summary of the results to the summary table
     $summaryTable += [PSCustomObject]@{
@@ -580,21 +590,26 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 }
 
 # Output results
-Write-Host "`nFinished searching for offsets."
+	Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for gadgets...done"
+	Write-Host ""
+	Write-Host ""
 
 # Check if any gadget offsets were found
 if ($foundOffsets.Count -gt 0) {
 	# Output summary of found gadget offsets and their values
-	Write-Host "`n`nFound gadget offsets and values summary`n"
+	Write-Host "Found gadget offsets and values summary"
+	Write-Host ""
 	
     # Display input file path and firmware version
 	Write-Host "Input file: $filename | Firmware version: ${fwver}"
+	Write-Host ""
 
 	# Format and display the list of found gadget offsets and their values
     $foundOffsets | Format-Table -Property GadgetName, FileOffset, Value -AutoSize | Out-Host
 
 	# Output summary table of gadget values and their counts
     Write-Host "Summary of instances for each gadget value:"
+	Write-Host ""
     $summaryTable | Format-Table -AutoSize | Out-Host
 
 	$jsOutput = ""
@@ -616,8 +631,10 @@ if ($foundOffsets.Count -gt 0) {
 	# If the text output switch is enabled, save the results to a file
     if ($text) {
         $outputFilename = "offsets_output.txt"
-        Write-Host "Saving results to $outputFilename..."
+        Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Saving results to $outputFilename..."
         $foundOffsets | Format-Table -Property GadgetName, FileOffset, Value -AutoSize | Out-File $outputFilename
+        Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Saving results to $outputFilename...done"
+        Write-Host ""
     }
 
 	# Output the total count of found gadget offsets
