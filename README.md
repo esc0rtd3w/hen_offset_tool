@@ -7,6 +7,6 @@
 
 #### View Results. Specify FW Version: ./hen_offset_tool.ps1 PS3HEN.BIN -fwver 490C
 
-#### Dump Offsets To Text: ./hen_offset_tool.ps1 PS3HEN.BIN -fwver 490C -text
+#### Dump Offsets To Text: ./hen_offset_tool.ps1 PS3HEN.BIN -text
 
 #### Show All Debug Output: ./hen_offset_tool.ps1 PS3HEN.BIN -debug
