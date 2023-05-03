@@ -56,24 +56,31 @@ Write-Host ""
 # Check switch to see if files should be compared
 if ($compare) {
     try {
+		# Read the first file
 		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename)..."
         $content1 = [System.IO.File]::ReadAllBytes($filename)
 		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename)...done"
 		Write-Host ""
+		
+		# Read the second file
 		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename2)..."
         $content2 = [System.IO.File]::ReadAllBytes($filename2)
 		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename2)...done"
 		Write-Host ""
 
+		# Initialize an array to store the differences
         $differences = @()
-
+		
         Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Comparing files..."
 
+		# Iterate through the files comparing 4-byte chunks
         $chunkSize = 4
         for ($i = 0; $i -lt $content1.Count; $i += $chunkSize) {
+			# Convert the 4-byte chunks to strings for comparison
             $chunk1 = [BitConverter]::ToString($content1, $i, $chunkSize).Replace("-", "")
             $chunk2 = [BitConverter]::ToString($content2, $i, $chunkSize).Replace("-", "")
 
+			# Compare the chunks and store the differences
             if ($chunk1 -ne $chunk2) {
                 $differences += "Difference at byte 0x{0:X8}: 0x{1} - 0x{2}`r`n" -f $i, $chunk1, $chunk2
                 if ($debug) { Write-Host ("Difference at byte 0x{0:X8}: 0x{1} - 0x{2}" -f $i, $chunk1, $chunk2) }
@@ -82,6 +89,7 @@ if ($compare) {
 		
         Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Comparing files...done"
 
+		# Save the differences to a file or print a message if no differences are found
         if ($differences.Count -gt 0) {
             $differences | Set-Content -Path (Join-Path $scriptPath "changes.txt")
             Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Differences saved to changes.txt."
