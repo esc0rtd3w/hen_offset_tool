@@ -1,8 +1,10 @@
 # Define script parameters
 param (
     [string]$filename,   # The name of the binary file to search
+    [string]$filename2,  # The name of the binary file to compare
     [string]$fwver,      # The firmware version to search for offsets in
     [switch]$debug,      # Debug mode switch
+    [switch]$compare,    # Compare 2 bins and output diffs switch
     [switch]$text,       # Text output switch
     [switch]$js          # Javascript output switch
 )
@@ -12,13 +14,13 @@ if (-not $filename) {
 	# Show help and about info
     Write-Host ""
     Write-Host "==========================================================================="
-    Write-Host "PS3HEN Offset Tool v1.0 [TEST VERSION]"
+    Write-Host "PS3HEN Offset Tool v1.0 [TEST VERSION 2]"
     Write-Host ""
     Write-Host "esc0rtd3w / PS3Xploit Team 2023"
     Write-Host "http://www.ps3xploit.me"
     Write-Host ""
     Write-Host ""
-    Write-Host "Usage: .\hen_offset_tool.ps1 [filename] -fwver [version] -debug -text"
+    Write-Host "Usage: .\hen_offset_tool.ps1 [filename] [[filename2] -compare] [-fwver [version]] -debug -text"
     Write-Host ""
     Write-Host ""
     Write-Host "Examples"
@@ -26,6 +28,8 @@ if (-not $filename) {
     Write-Host "View Results. Ask For FW Version: ./hen_offset_tool.ps1 PS3HEN.BIN"
     Write-Host ""
     Write-Host "View Results. Specify FW Version: ./hen_offset_tool.ps1 PS3HEN.BIN -fwver 490C"
+    Write-Host ""
+    Write-Host "Compare 2 Bins: ./hen_offset_tool.ps1 PS3HEN_482C.BIN PS3HEN_490C.BIN -compare"
     Write-Host ""
     Write-Host "Dump Offsets To Text: ./hen_offset_tool.ps1 PS3HEN.BIN -fwver 490C -text"
     Write-Host ""
@@ -41,15 +45,61 @@ if (-not (Test-Path $filename)) {
     exit 1
 }
 
+# Get the current script directory
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
+
 # Title and Info
 Write-Host ""
-Write-Host "PS3HEN Offset Tool v1.0 [TEST VERSION]"
+Write-Host "PS3HEN Offset Tool v1.0 [TEST VERSION 2]"
 Write-Host ""
+
+# Check switch to see if files should be compared
+if ($compare) {
+    try {
+		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename)..."
+        $content1 = [System.IO.File]::ReadAllBytes($filename)
+		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename)...done"
+		Write-Host ""
+		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename2)..."
+        $content2 = [System.IO.File]::ReadAllBytes($filename2)
+		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename2)...done"
+		Write-Host ""
+
+        $differences = @()
+
+        Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Comparing files..."
+
+        $chunkSize = 4
+        for ($i = 0; $i -lt $content1.Count; $i += $chunkSize) {
+            $chunk1 = [BitConverter]::ToString($content1, $i, $chunkSize).Replace("-", "")
+            $chunk2 = [BitConverter]::ToString($content2, $i, $chunkSize).Replace("-", "")
+
+            if ($chunk1 -ne $chunk2) {
+                $differences += "Difference at byte 0x{0:X8}: 0x{1} - 0x{2}`r`n" -f $i, $chunk1, $chunk2
+                if ($debug) { Write-Host ("Difference at byte 0x{0:X8}: 0x{1} - 0x{2}" -f $i, $chunk1, $chunk2) }
+            }
+        }
+		
+        Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Comparing files...done"
+
+        if ($differences.Count -gt 0) {
+            $differences | Set-Content -Path (Join-Path $scriptPath "changes.txt")
+            Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Differences saved to changes.txt."
+			exit 1
+        } else {
+            Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  No differences found between the files."
+			exit 1
+        }
+    } catch {
+        Write-Error "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  An error occurred while comparing the files: $_"
+		exit 1
+    }
+}
 
 # Check if the fwver parameter is provided, and prompt the user for it if it isn't
 if (-not $fwver) {
     do {
-        $fwver = Read-Host -Prompt "Please select firmware version (Available versions: 480C, 481C, 482C, 482D, 484C, 484D, 490C)"
+        $fwver = Read-Host -Prompt "Please select firmware version (Available versions: 480C, 481C, 482C, 482D, 483C, 484C, 484D, 490C)"
     } while (-not ($fwver -eq "480C" -or $fwver -eq "481C" -or $fwver -eq "482C" -or $fwver -eq "482D" -or $fwver -eq "483C" -or $fwver -eq "484C" -or $fwver -eq "484D" -or $fwver -eq "490C"))
 }
 
@@ -590,43 +640,41 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 }
 
 # Output results
-	Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for gadgets...done"
-	Write-Host ""
-	Write-Host ""
+Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for gadgets...done"
+Write-Host ""
+Write-Host ""
 
 # Check if any gadget offsets were found
 if ($foundOffsets.Count -gt 0) {
-	# Output summary of found gadget offsets and their values
-	Write-Host "Found gadget offsets and values summary"
-	Write-Host ""
-	
+    # Output summary of found gadget offsets and their values
+    Write-Host "Found gadget offsets and values summary"
+    Write-Host ""
+    
     # Display input file path and firmware version
-	Write-Host "Input file: $filename | Firmware version: ${fwver}"
-	Write-Host ""
+    Write-Host "Input file: $filename | Firmware version: ${fwver}"
+    Write-Host ""
 
-	# Format and display the list of found gadget offsets and their values
+    # Format and display the list of found gadget offsets and their values
     $foundOffsets | Format-Table -Property GadgetName, FileOffset, Value -AutoSize | Out-Host
 
-	# Output summary table of gadget values and their counts
+    # Output summary table of gadget values and their counts
     Write-Host "Summary of instances for each gadget value:"
-	Write-Host ""
+    Write-Host ""
     $summaryTable | Format-Table -AutoSize | Out-Host
 
-	$jsOutput = ""
+    if ($js) {
+        $jsOutput = @()
+        $uniqueGadgets = $foundOffsets.GadgetName | Select-Object -Unique
+        foreach ($gadgetName in $uniqueGadgets) {
+            $offsetsForGadget = $foundOffsets | Where-Object { $_.GadgetName -eq $gadgetName } | ForEach-Object { $_.FileOffset }
+            $offsetsString = ($offsetsForGadget -join ",`n`t")
+            $jsOutput += "const $gadgetName = [`n`t$offsetsString`n];`n"
+        }
 
-	if ($js) {
-		foreach ($offsetGroup in $offsetsDictionary.GetEnumerator()) {
-			$groupKey = $offsetGroup.Name
-			$offsets = $offsetGroup.Value
-
-			foreach ($offset in $offsets.GetEnumerator()) {
-				$jsOutput += "const $($offset.Name)_$($groupKey) = [`n`t$($offset.Value)`n];`n`n"
-			}
-		}
-
-    # Save the $jsOutput to a .js file
-    Set-Content -Path "output.js" -Value $jsOutput
-	}
+        #$jsOutput -join "`n" | Out-File -FilePath "gadget_offsets_${fwver}.js"
+        $jsOutput -join "`n" | Out-File -FilePath (Join-Path $scriptPath "gadget_offsets_${fwver}.js")
+        Write-Host "JavaScript output saved to gadget_offsets_${fwver}.js"
+    }
 
 	# If the text output switch is enabled, save the results to a file
     if ($text) {
