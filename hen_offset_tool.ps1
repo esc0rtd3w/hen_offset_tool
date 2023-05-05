@@ -15,7 +15,7 @@ if (-not $filename) {
 	# Show help and about info
     Write-Host ""
     Write-Host "==========================================================================="
-    Write-Host "PS3HEN Offset Tool v1.0 [TEST VERSION 2]"
+    Write-Host "PS3HEN Offset Tool v1.0 [TEST VERSION 3]"
     Write-Host ""
     Write-Host "esc0rtd3w / PS3Xploit Team 2023"
     Write-Host "http://www.ps3xploit.me"
@@ -213,15 +213,37 @@ function Get_PPC_OP_Code {
     }
 
     if ($ppcOpCodes.ContainsKey($hexValue)) {
-        Write-Host ("Input Value: $hexValue, PPC OP Code: $($ppcOpCodes[$hexValue])")
+        Write-Host ("$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Input Value: $hexValue, PPC OP Code: $($ppcOpCodes[$hexValue])")
     } else {
-        Write-Host "No matching PPC OP Code found for input value: $hexValue"
+        Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  No matching PPC OP Code found for input value: $hexValue"
     }
+}
+
+
+# Unused
+function ByteSequenceEqual($a, $b) {
+	
+	# Check if the count of elements in arrays $a and $b are not equal
+    if ($a.Count -ne $b.Count) {
+        return $false
+    }
+	
+	# Loop through each element in arrays $a and $b
+    for ($i = 0; $i -lt $a.Count; $i++) {
+		
+		# Check if the elements at index $i are not equal
+        if ($a[$i] -ne $b[$i]) {
+            return $false
+        }
+    }
+	
+	# Return true if all elements in the arrays are equal
+    return $true
 }
 
 # Title and Info
 Write-Host ""
-Write-Host "PS3HEN Offset Tool v1.0 [TEST VERSION 2]"
+Write-Host "PS3HEN Offset Tool v1.0 [TEST VERSION 3]"
 Write-Host ""
 
 # Check switch to see if files should be compared
@@ -719,28 +741,6 @@ Write-Host "*** THIS STEP MAY TAKE A WHILE DEPENDING ON THE SPEED OF YOUR COMPUT
 Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading binary file content into 0x4 byte chunks..."
 $fileContent = [System.IO.File]::ReadAllBytes($filename)
 
-# Search for gadget offsets in the binary file
-$foundOffsets = @()
-function ByteSequenceEqual($a, $b) {
-	
-	# Check if the count of elements in arrays $a and $b are not equal
-    if ($a.Count -ne $b.Count) {
-        return $false
-    }
-	
-	# Loop through each element in arrays $a and $b
-    for ($i = 0; $i -lt $a.Count; $i++) {
-		
-		# Check if the elements at index $i are not equal
-        if ($a[$i] -ne $b[$i]) {
-            return $false
-        }
-    }
-	
-	# Return true if all elements in the arrays are equal
-    return $true
-}
-
 # Divide the file content into 4-byte chunks
 $chunkIndex = 0
 $chunkedFileContent = -join ($fileContent | % { '{0:X2}' -f $_ }) -split '(?<=\G.{8})' | Where-Object { $_ } | % { 
@@ -758,12 +758,14 @@ $chunkedFileContent = -join ($fileContent | % { '{0:X2}' -f $_ }) -split '(?<=\G
     [UInt32]("0x" + $_) 
 }
 
-# Search for each offset value in the offsets dictionary
-$summaryTable = @()
 Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading binary file content in 0x4 byte chunks...done"
 Write-Host ""
 Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for gadgets..."
 Write-Host ""
+
+# Search for each offset value in the offsets dictionary
+$summaryTable = @()
+$foundOffsets = @()
 
 # Loop through each offset in the dictionary
 foreach ($offset in $currentDictionary.GetEnumerator()) {
@@ -771,9 +773,6 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 	# Convert the offset value to UInt32 and display a search message
     $searchValue = [UInt32]("0x" + $offset.Value)
     Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for $($offset.Name) with value 0x$($offset.Value)..."
-
-	# Get the PPC operation code
-	$ppcOpCode = Get_PPC_OP_Code $offset.Name
 
 	# Initialize a counter for number of instances found
     $count = 0
@@ -788,6 +787,10 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
             $foundAtOffset = '0x{0:X8}' -f (($i * 4) + 0x4)
             $formattedBytes = '{0:X8}' -f $searchValue
             if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Found at offset: 0x$('{0:X8}' -f $foundAtOffset) -> $formattedBytes" }
+			
+			# Get the PPC operation code
+			# this needs modified to read another dictionary value for actual PPC code for each gadget value
+			#$ppcOpCode = Get_PPC_OP_Code $foundAtOffset
 
 			# Increment the instance counter and check if the match already exists in the results array
             $count++
