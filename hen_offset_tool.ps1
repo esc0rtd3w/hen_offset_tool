@@ -6,6 +6,7 @@ param (
     [switch]$debug,      # Debug mode switch
     [switch]$compare,    # Compare 2 bins and output diffs switch
     [switch]$text,       # Text output switch
+    [switch]$opcode,     # Text output matching gadgets with PPC code output
     [switch]$js          # Javascript output switch
 )
 
@@ -47,6 +48,176 @@ if (-not (Test-Path $filename)) {
 
 # Get the current script directory
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
+
+# Get PPC OP Code as hexadecimal value
+function Get_PPC_OP_Code {
+    param (
+        [string]$hexValue
+    )
+
+    # Dictionary of PPC OP Codes
+    $ppcOpCodes = @{
+        # Arithmetic
+        'add'   = '7C000214';   # Add
+		'addc'  = '7C000215';   # Add carrying
+		'adde'  = '7C000216';   # Add extended
+		'addme' = '7C000217';   # Add minus one extended
+		'addze' = '7C000218';   # Add to zero extended
+		'addo'  = '7C0001D4';   # Add (with overflow)
+		'addco' = '7C0001D5';   # Add carrying (with overflow)
+		'addeo' = '7C0001D6';   # Add extended (with overflow)
+		'addmeo'= '7C0001D7';   # Add minus one extended (with overflow)
+		'addzeo'= '7C0001D8';   # Add to zero extended (with overflow)
+		'divw'  = '7C000219';   # Divide word
+		'divwu' = '7C00021A';   # Divide word unsigned
+		'mulhw' = '7C00021B';   # Multiply high word
+		'mulhwu'= '7C00021C';   # Multiply high word unsigned
+		'mullw' = '7C00021D';   # Multiply low word
+		'mulli' = '7C00021E';   # Multiply low immediate
+		'neg'   = '7C00021F';   # Negate
+		'subf'  = '7C000220';   # Subtract from
+		'subfc' = '7C000221';   # Subtract from carrying
+		'subfe' = '7C000222';   # Subtract from extended
+		'subfme'= '7C000223';   # Subtract from minus one extended
+		'subfze'= '7C000224';   # Subtract from zero extended
+		'divwo' = '7C0001E0';   # Divide word (with overflow)
+		'divwuo'= '7C0001E1';   # Divide word unsigned (with overflow)
+		'mulhwo'= '7C0001E2';   # Multiply high word (with overflow)
+		'mulhwuo'= '7C0001E3';  # Multiply high word unsigned (with overflow)
+		'mullwo'= '7C0001E4';   # Multiply low word (with overflow)
+
+        # Logical
+        'and'   = '7C000038';   # AND
+		'andi'  = '7C000039';   # AND Immediate
+		'andis' = '7C00003A';   # AND Immediate Shifted
+		'nand'  = '7C00003B';   # NAND
+		'nor'   = '7C00003C';   # NOR
+		'or'    = '7C00003D';   # OR
+		'ori'   = '7C00003E';   # OR Immediate
+		'oris'  = '7C00003F';   # OR Immediate Shifted
+		'xor'   = '7C000040';   # XOR (Exclusive OR)
+		'xori'  = '7C000041';   # XOR Immediate
+		'xoris' = '7C000042';   # XOR Immediate Shifted
+		'eqv'   = '7C000043';   # Equivalent (XOR Inverted)
+		'extsb' = '7C000044';   # Extend Sign Byte
+		'extsh' = '7C000045';   # Extend Sign Halfword
+		'extsw' = '7C000046';   # Extend Sign Word
+		'cntlzw'= '7C000047';   # Count Leading Zeros Word
+		'cntlzd'= '7C000048';   # Count Leading Zeros Doubleword
+		'popcntw' = '7C000049'; # Population Count Word
+		'popcntd' = '7C00004A'; # Population Count Doubleword
+		'clrldi' = '7C00004B';  # Clear Left Doubleword Immediate
+		'clrlwi' = '7C00004C';  # Clear Left Word Immediate
+		'clrrdi' = '7C00004D';  # Clear Right Doubleword Immediate
+		'clrrwi' = '7C00004E';  # Clear Right Word Immediate
+		'insrdi' = '7C00004F';  # Insert from Right Doubleword Immediate
+		'insrwi' = '7C000050';  # Insert from Right Word Immediate
+		'slwi'   = '7C000051';  # Shift Left Word Immediate
+		'sldi'   = '7C000052';  # Shift Left Doubleword Immediate
+		'srwi'   = '7C000053';  # Shift Right Word Immediate
+		'srdi'   = '7C000054';  # Shift Right Doubleword Immediate
+
+        # Branch
+        'b' = '48000000'; # Branch
+		'bl' = '4C000020'; # Branch and Link
+		'blr' = '4C000021'; # Branch and Link Register
+		'bctr' = '4C000022'; # Branch to Count Register
+		'bctrl' = '4C000023'; # Branch to Count Register and Link
+		'bc' = '4C000024'; # Branch Conditional
+		'bca' = '4C000025'; # Branch Conditional Absolute
+		'bcl' = '4C000026'; # Branch Conditional and Link
+		'bcla' = '4C000027'; # Branch Conditional and Link Absolute
+		'bcctr' = '4C000028'; # Branch Conditional to Count Register
+		'bcctrl' = '4C000029'; # Branch Conditional to Count Register and Link
+		'bclr' = '4C00002A'; # Branch Conditional to Link Register
+		'bclrl' = '4C00002B'; # Branch Conditional to Link Register and Link
+		'bcx' = '4C00002C'; # Branch Conditional Extended
+		'bcxl' = '4C00002D'; # Branch Conditional Extended and Link
+		'bcxx' = '4C00002E'; # Branch Conditional Extended Extended
+		'bcxxl' = '4C00002F'; # Branch Conditional Extended Extended and Link
+
+        # Load
+        'lwz'  = '80000000'; # Load Word and Zero
+		'lwzu' = '80200000'; # Load Word and Zero with Update
+		'lwzux'= '81200000'; # Load Word and Zero with Update Indexed
+		'lwzx' = '81000000'; # Load Word and Zero Indexed
+		'lhz'  = 'A0000000'; # Load Halfword and Zero
+		'lhzu' = 'A0200000'; # Load Halfword and Zero with Update
+		'lhzux'= 'A1200000'; # Load Halfword and Zero with Update Indexed
+		'lhzx' = 'A1000000'; # Load Halfword and Zero Indexed
+		'lha'  = 'A8000000'; # Load Halfword Algebraic
+		'lhau' = 'A8200000'; # Load Halfword Algebraic with Update
+		'lhaux'= 'A9200000'; # Load Halfword Algebraic with Update Indexed
+		'lhax' = 'A9000000'; # Load Halfword Algebraic Indexed
+		'lbz'  = 'A4000000'; # Load Byte and Zero
+		'lbzu' = 'A4200000'; # Load Byte and Zero with Update
+		'lbzux'= 'A5200000'; # Load Byte and Zero with Update Indexed
+		'lbzx' = 'A5000000'; # Load Byte and Zero Indexed
+		'lfs'  = 'C0000000'; # Load Floating-Point Single
+		'lfsu' = 'C0200000'; # Load Floating-Point Single with Update
+		'lfsux'= 'C2200000'; # Load Floating-Point Single with Update Indexed
+		'lfsx' = 'C2000000'; # Load Floating-Point Single Indexed
+		'lfd'  = 'E0000000'; # Load Floating-Point Double
+		'lfdu' = 'E0200000'; # Load Floating-Point Double with Update
+		'lfdux'= 'E2200000'; # Load Floating-Point Double with Update Indexed
+		'lfdx' = 'E2000000'; # Load Floating-Point Double Indexed
+
+        # Store
+		'stw'   = '90000000'; # Store Word
+		'stwu'  = '90200000'; # Store Word with Update
+		'stwux' = '91200000'; # Store Word with Update Indexed
+		'stwx'  = '91000000'; # Store Word Indexed
+		'sth'   = 'B0000000'; # Store Halfword
+		'sthu'  = 'B0200000'; # Store Halfword with Update
+		'sthux' = 'B1200000'; # Store Halfword with Update Indexed
+		'sthx'  = 'B1000000'; # Store Halfword Indexed
+		'stb'   = 'B4000000'; # Store Byte
+		'stbu'  = 'B4200000'; # Store Byte with Update
+		'stbux' = 'B5200000'; # Store Byte with Update Indexed
+		'stbx'  = 'B5000000'; # Store Byte Indexed
+		'stfs'  = 'D0000000'; # Store Floating-Point Single
+		'stfsu' = 'D0200000'; # Store Floating-Point Single with Update
+		'stfsux'= 'D2200000'; # Store Floating-Point Single with Update Indexed
+		'stfsx' = 'D2000000'; # Store Floating-Point Single Indexed
+		'stfd'  = 'F0000000'; # Store Floating-Point Double
+		'stfdu' = 'F0200000'; # Store Floating-Point Double with Update
+		'stfdux'= 'F2200000'; # Store Floating-Point Double with Update Indexed
+		'stfdx' = 'F2000000'; # Store Floating-Point Double Indexed
+		'stfiwx'= 'DC000000'; # Store Floating-Point Immediate Word Indexed
+
+        # Pseudo-OP Codes
+		
+		# nop (No Operation)
+		# Instruction: ori r0, r0, 0
+        'nop' = '60000000';
+		
+		# li Rx, IMM (Load Immediate)
+		# Instruction: addi Rx, r0, IMM
+		# where XX is the register number and YYYY is the immediate value)
+        #'li' = '38XXYYYY';
+		
+		# mr Rx, Ry (Move Register)
+		# Instruction: or Rx, Ry, Ry
+		# where XX is the destination register number and YY is the source register number
+        #'mr' = '7CXXYY78';
+		
+		# not Rx, Ry (Not)
+		# Instruction: nor Rx, Ry, Ry
+		# where XX is the destination register number and YY is the source register number
+        #'not' = '7CXXYYF8';
+		
+		# blr (Branch to Link Register)
+		# Instruction: mtlr rX; blr
+		# 4E800020 (where XX is the register number)
+        #'blr' = '7C08XXXA';
+    }
+
+    if ($ppcOpCodes.ContainsKey($hexValue)) {
+        Write-Host ("Input Value: $hexValue, PPC OP Code: $($ppcOpCodes[$hexValue])")
+    } else {
+        Write-Host "No matching PPC OP Code found for input value: $hexValue"
+    }
+}
 
 # Title and Info
 Write-Host ""
@@ -601,6 +772,9 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
     $searchValue = [UInt32]("0x" + $offset.Value)
     Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for $($offset.Name) with value 0x$($offset.Value)..."
 
+	# Get the PPC operation code
+	$ppcOpCode = Get_PPC_OP_Code $offset.Name
+
 	# Initialize a counter for number of instances found
     $count = 0
 
@@ -625,6 +799,7 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
                     GadgetName = $offset.Name
                     FileOffset = $foundAtOffset
                     Value = '0x{0:X8}' -f $searchValue
+                    PPCOpCode = $ppcOpCode
                 }
 				# Display the message for a new match found
                 if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  New match found for $($offset.Name) at offset $($foundAtOffset): $count instance(s) found." }
@@ -683,6 +858,24 @@ if ($foundOffsets.Count -gt 0) {
         $jsOutput -join "`n" | Out-File -FilePath (Join-Path $scriptPath "gadget_offsets_${fwver}.js")
         Write-Host "JavaScript output saved to gadget_offsets_${fwver}.js"
     }
+	
+	if ($opcode) {
+		$opcodeOutput = @()
+		$uniqueGadgets = $foundOffsets.GadgetName | Select-Object -Unique
+		foreach ($gadgetName in $uniqueGadgets) {
+			$offsetsForGadget = $foundOffsets | Where-Object { $_.GadgetName -eq $gadgetName } | ForEach-Object { $_.FileOffset }
+			$offsetsString = ($offsetsForGadget -join ",`n`t")
+			$opcodeOutput += "GadgetName: $gadgetName`n"
+			foreach ($offset in $offsetsForGadget) {
+				$ppcOpCode = Get_PPC_OP_Code $offset
+				$opcodeOutput += "Offset: $offset, OpCode: $ppcOpCode`n"
+			}
+			$opcodeOutput += "`n"
+		}
+
+		$opcodeOutput -join "`n" | Out-File -FilePath (Join-Path $scriptPath "gadget_opcodes_${fwver}.txt")
+		Write-Host "OpCode output saved to gadget_opcodes_${fwver}.txt"
+	}
 
 	# If the text output switch is enabled, save the results to a file
     if ($text) {
