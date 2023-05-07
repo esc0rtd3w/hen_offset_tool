@@ -7,6 +7,9 @@ param (
     [switch]$compare,    # Compare 2 bins and output diffs switch
     [switch]$text,       # Text output switch
     [switch]$opcode,     # Text output matching gadgets with PPC code output
+    [switch]$replace,    # Replace current offset values with values from another firmware
+    #[switch]$newfw,      # Only used with -replace switch to specify new fw version
+	[string]$newfw = $null,
     [switch]$js          # Javascript output switch
 )
 
@@ -733,6 +736,30 @@ if (-not $offsetsDictionary.ContainsKey($fwver)) {
     exit 1
 }
 
+function ReplaceBytes ($chunkedContent, $searchValue, $replacementValue) {
+    for ($i = 0; $i -lt $chunkedContent.Length; $i++) {
+        if ($chunkedContent[$i] -eq $searchValue) {
+            $chunkedContent[$i] = $replacementValue
+        }
+    }
+    return $chunkedContent
+}
+
+function WriteNewBytes ($chunkedContent, $inputFile) {
+    # Convert the chunked content array back to bytes
+    $byteContent = New-Object 'Byte[]' ($chunkedContent.Length * 4)
+    for ($i = 0; $i -lt $chunkedContent.Length; $i++) {
+        $bytes = [BitConverter]::GetBytes($chunkedContent[$i])
+        if ([BitConverter]::IsLittleEndian) {
+            [Array]::Reverse($bytes)
+        }
+        $bytes.CopyTo($byteContent, $i * 4)
+    }
+
+    # Write the byte array to the input file
+    Set-Content -Path $inputFile -Value $byteContent -Encoding Byte -Force
+}
+
 # Select the offsets dictionary for the selected firmware version
 $currentDictionary = $offsetsDictionary.$fwver
 
@@ -751,7 +778,7 @@ $chunkedFileContent = -join ($fileContent | % { '{0:X2}' -f $_ }) -split '(?<=\G
 	# Get the range that the current offset falls within
     $range = $ranges | Where-Object { $currentOffset -ge [UInt32]($_.Start) -and $currentOffset -lt [UInt32]($_.End) } | Select-Object -First 1
 	# Write debug information if debug mode is enabled
-    if ($debug) { Write-Host "Processing chunk: $_     Offset: $offset     Range: $($range.Name)" }
+    #if ($debug) { Write-Host "Processing chunk: $_     Offset: $offset     Range: $($range.Name)" }
 	# Increment the chunk index
     $chunkIndex++
 	# Convert the hexadecimal string to an unsigned 32-bit integer
@@ -769,34 +796,58 @@ $foundOffsets = @()
 
 # Loop through each offset in the dictionary
 foreach ($offset in $currentDictionary.GetEnumerator()) {
-	
-	# Convert the offset value to UInt32 and display a search message
+    # Convert the offset value to UInt32 and display a search message
     $searchValue = [UInt32]("0x" + $offset.Value)
     Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for $($offset.Name) with value 0x$($offset.Value)..."
 
-	# Initialize a counter for number of instances found
+    # Initialize a counter for number of instances found
     $count = 0
 
-	# Loop through each element in the file content array
+    # Loop through each element in the file content array
     for ($i = 0; $i -lt $chunkedFileContent.Length; $i++) {
-		
-		# Check if the element matches the search value
+        # Check if the element matches the search value
         if ($chunkedFileContent[$i] -eq $searchValue) {
-			
-			# Calculate the file offset and display the match information
+            # Calculate the file offset and display the match information
             $foundAtOffset = '0x{0:X8}' -f (($i * 4) + 0x4)
             $formattedBytes = '{0:X8}' -f $searchValue
             if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Found at offset: 0x$('{0:X8}' -f $foundAtOffset) -> $formattedBytes" }
-			
-			# Get the PPC operation code
-			# this needs modified to read another dictionary value for actual PPC code for each gadget value
-			#$ppcOpCode = Get_PPC_OP_Code $foundAtOffset
 
-			# Increment the instance counter and check if the match already exists in the results array
+            # Replace the current fw value with the new fw value if -replace and -newfw switch are provided
+            if ($replace -and $newfw) {
+				if ($debug) {
+					Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Old firmware version: $fwver"
+					Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  New firmware version: $newfw"
+					#Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Offsets dictionary: $($offsetsDictionary | Out-String)"
+				}
+				$newFirmwareOffsets = $offsetsDictionary.$newfw
+				if ($debug) {
+					#Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  New firmware offsets: $($newFirmwareOffsets | Out-String)"
+					#Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Current offset name: $($offset.Name)"
+				}
+				# Check if the new firmware offsets dictionary contains the current offset name
+				if ($newFirmwareOffsets.ContainsKey($offset.Name)) {
+					# Get the replacement value for the current offset from the new firmware offsets dictionary
+					$replacementValue = [UInt32]("0x" + $newFirmwareOffsets[$offset.Name])
+
+					# Check if the current offset value is different from the replacement value
+					if ([UInt32]("0x" + $offset.Value) -ne $replacementValue) {
+						if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Replacing 0x$('{0:X8}' -f $offset.Value) with 0x$('{0:X8}' -f $replacementValue) for $($offset.Name)..." }
+
+						# Replace the current offset value with the new replacement value in the chunked file content
+						$chunkedFileContent = ReplaceBytes -chunkedContent $chunkedFileContent -searchValue $searchValue -replacementValue $replacementValue
+					} else {
+						if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Offset value for $($offset.Name) is the same in both firmware versions. Skipping replacement." }
+					}
+				} else {
+					if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  No replacement value found for $($offset.Name) in new firmware offsets." }
+				}
+			}
+
+            # Increment the instance counter and check if the match already exists in the results array
             $count++
             $existingOffset = $foundOffsets | Where-Object { $_.Name -eq $offset.Name -and $_.FileOffset -eq $foundAtOffset }
 
-			# Add a new match to the results array if it doesn't already exist
+            # Add a new match to the results array if it doesn't already exist
             if ($null -eq $existingOffset) {
                 $foundOffsets += [PSCustomObject]@{
                     GadgetName = $offset.Name
@@ -804,25 +855,32 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
                     Value = '0x{0:X8}' -f $searchValue
                     PPCOpCode = $ppcOpCode
                 }
-				# Display the message for a new match found
+                # Display the message for a new match found
                 if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  New match found for $($offset.Name) at offset $($foundAtOffset): $count instance(s) found." }
             } else {
-				# Update the count if the match already exists in the results array
+                # Update the count if the match already exists in the results array
                 if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Additional match found for $($existingOffset.Name) at offset $($existingOffset.FileOffset): $count instance(s) found." }
             }
         }
     }
 
-	# Display the total number of instances found for the current offset
+    # Display the total number of instances found for the current offset
     $formattedCount = '{0:d}' -f $count
     Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Found $formattedCount matches for $($offset.Name)."
-	Write-Host ""
-
+    Write-Host ""
+	
 	# Add a summary of the results to the summary table
     $summaryTable += [PSCustomObject]@{
-        GadgetName = $offset.Name
-        Instances = $count
-    }
+	GadgetName = $offset.Name
+	Instances = $count
+	}
+}
+
+# Call the WriteNewBytes function to update the input file with the replaced values
+if ($replace -and $newfw) {
+	#Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Writing $([string]::Join(', ', ($chunkedFileContent | ForEach-Object { '0x{0:X8}' -f $_ }))) to $($filename)."
+	#Write-Host ""
+	WriteNewBytes -chunkedContent $chunkedFileContent -inputFile $filename
 }
 
 # Output results
@@ -857,7 +915,6 @@ if ($foundOffsets.Count -gt 0) {
             $jsOutput += "const $gadgetName = [`n`t$offsetsString`n];`n"
         }
 
-        #$jsOutput -join "`n" | Out-File -FilePath "gadget_offsets_${fwver}.js"
         $jsOutput -join "`n" | Out-File -FilePath (Join-Path $scriptPath "gadget_offsets_${fwver}.js")
         Write-Host "JavaScript output saved to gadget_offsets_${fwver}.js"
     }
