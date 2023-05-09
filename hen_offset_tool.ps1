@@ -253,7 +253,7 @@ function ByteSequenceEqual($a, $b) {
 
 # Title and Info
 Write-Host ""
-Write-Host "PS3HEN Offset Tool v1.0 [TEST VERSION 3]"
+Write-Host "PS3HEN Offset Tool v1.0"
 Write-Host ""
 
 # Check switch to see if files should be compared
