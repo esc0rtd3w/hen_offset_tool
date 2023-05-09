@@ -13,6 +13,8 @@ param (
     [switch]$js          # Javascript output switch
 )
 
+$logFile = "hen_offset_tool.log"
+
 # Check if filename parameter is provided
 if (-not $filename) {
 	# Show help and about info
@@ -796,89 +798,111 @@ $foundOffsets = @()
 
 # Loop through each offset in the dictionary
 foreach ($offset in $currentDictionary.GetEnumerator()) {
-    # Convert the offset value to UInt32 and display a search message
+	
+	# Convert the offset value to UInt32 and display a search message
     $searchValue = [UInt32]("0x" + $offset.Value)
     Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for $($offset.Name) with value 0x$($offset.Value)..."
 
-    # Initialize a counter for number of instances found
+	# Initialize a counter for number of instances found
     $count = 0
+    $offsetFound = $false
+	
+	# Initialize a hashtable to store the count of matches for each gadget
+	$gadgetMatchesCount = @{}
 
-    # Loop through each element in the file content array
+	# Loop through each element in the file content array
     for ($i = 0; $i -lt $chunkedFileContent.Length; $i++) {
-        # Check if the element matches the search value
+		
+		# Check if the element matches the search value
         if ($chunkedFileContent[$i] -eq $searchValue) {
-            # Calculate the file offset and display the match information
+			
+			# Calculate the file offset and display the match information
+            $offsetFound = $true
+
             $foundAtOffset = '0x{0:X8}' -f (($i * 4) + 0x4)
             $formattedBytes = '{0:X8}' -f $searchValue
-            if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Found at offset: 0x$('{0:X8}' -f $foundAtOffset) -> $formattedBytes" }
-
-            # Replace the current fw value with the new fw value if -replace and -newfw switch are provided
-            if ($replace -and $newfw) {
-				if ($debug) {
-					Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Old firmware version: $fwver"
-					Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  New firmware version: $newfw"
-					#Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Offsets dictionary: $($offsetsDictionary | Out-String)"
-				}
-				$newFirmwareOffsets = $offsetsDictionary.$newfw
-				if ($debug) {
-					#Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  New firmware offsets: $($newFirmwareOffsets | Out-String)"
-					#Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Current offset name: $($offset.Name)"
-				}
-				# Check if the new firmware offsets dictionary contains the current offset name
-				if ($newFirmwareOffsets.ContainsKey($offset.Name)) {
-					# Get the replacement value for the current offset from the new firmware offsets dictionary
-					$replacementValue = [UInt32]("0x" + $newFirmwareOffsets[$offset.Name])
-
-					# Check if the current offset value is different from the replacement value
-					if ([UInt32]("0x" + $offset.Value) -ne $replacementValue) {
-						if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Replacing 0x$('{0:X8}' -f $offset.Value) with 0x$('{0:X8}' -f $replacementValue) for $($offset.Name)..." }
-
-						# Replace the current offset value with the new replacement value in the chunked file content
-						$chunkedFileContent = ReplaceBytes -chunkedContent $chunkedFileContent -searchValue $searchValue -replacementValue $replacementValue
-					} else {
-						if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Offset value for $($offset.Name) is the same in both firmware versions. Skipping replacement." }
-					}
-				} else {
-					if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  No replacement value found for $($offset.Name) in new firmware offsets." }
-				}
+            if ($debug) { 
+				Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Found at offset: $foundAtOffset -> $formattedBytes (Search Value: 0x$('{0:X8}' -f $searchValue))"
 			}
 
             # Increment the instance counter and check if the match already exists in the results array
             $count++
             $existingOffset = $foundOffsets | Where-Object { $_.Name -eq $offset.Name -and $_.FileOffset -eq $foundAtOffset }
 
-            # Add a new match to the results array if it doesn't already exist
-            if ($null -eq $existingOffset) {
-                $foundOffsets += [PSCustomObject]@{
-                    GadgetName = $offset.Name
-                    FileOffset = $foundAtOffset
-                    Value = '0x{0:X8}' -f $searchValue
-                    PPCOpCode = $ppcOpCode
-                }
-                # Display the message for a new match found
-                if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  New match found for $($offset.Name) at offset $($foundAtOffset): $count instance(s) found." }
-            } else {
-                # Update the count if the match already exists in the results array
-                if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Additional match found for $($existingOffset.Name) at offset $($existingOffset.FileOffset): $count instance(s) found." }
-            }
+			# Add a new match to the results array if it doesn't already exist
+            if ($null -eq $existingOffset)
+			{
+				$foundOffsets += [PSCustomObject]@{
+					GadgetName = $offset.Name
+					FileOffset = $foundAtOffset
+					Value = '0x{0:X8}' -f $searchValue
+					Instances = $count
+				}
+				# Display the message for a new match found
+				if ($debug)
+				{ 
+					Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  New match found for $($offset.Name) at offset $($foundAtOffset): $count instance(s) found."
+				}
+			} 
+			else
+			{
+				# Update the count if the match already exists in the results array
+				$existingOffset.Instances = $count
+				if ($debug)
+				{ 
+					Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Additional match found for $($existingOffset.Name) at offset $($existingOffset.FileOffset): $count instance(s) found."
+				}
+			}
         }
     }
 
-    # Display the total number of instances found for the current offset
-    $formattedCount = '{0:d}' -f $count
-    Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Found $formattedCount matches for $($offset.Name)."
-    Write-Host ""
-	
-	# Add a summary of the results to the summary table
-    $summaryTable += [PSCustomObject]@{
-	GadgetName = $offset.Name
-	Instances = $count
+	# Replace the current fw value with the new fw value if -replace and -newfw switch are provided
+	if ($replace -and $newfw) {
+		# Get the new firmware offsets from the offsets dictionary
+		$newFirmwareOffsets = $offsetsDictionary.$newfw
+		# Get the replacement value for the current offset from the new firmware offsets dictionary
+		$replacementValue = [UInt32]("0x" + $newFirmwareOffsets[$offset.Name])
+
+		# Check if the new firmware offsets dictionary contains the current offset name
+		if ($newFirmwareOffsets.ContainsKey($offset.Name)) {
+			# Loop through the chunked file content
+			for ($i = 0; $i -lt $chunkedFileContent.Length; $i++) {
+				# If the current value in the chunked file content matches the search value
+				if ($chunkedFileContent[$i] -eq $searchValue -and $i -gt 0) {
+					# Replace the current value with the new replacement value in the chunked file content
+					$chunkedFileContent[$i] = $replacementValue
+					if ($debug) {
+						Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Replaced at offset: 0x$('{0:X8}' -f ($i * 4)) with 0x$('{0:X8}' -f $replacementValue) for $($offset.Name)."
+					}
+				}
+			}
+		} else {
+			# Output debug information if no replacement value is found for the current offset in the new firmware offsets
+			if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  No replacement value found for $($offset.Name) in new firmware offsets." }
+		}
+
+		# Display the total number of instances found for the current offset
+		if ($offsetFound) {
+			$formattedCount = '{0:d}' -f $count
+			Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Found $formattedCount matches for $($offset.Name)."
+			Write-Host ""
+
+			# Add a summary of the results to the summary table
+			$summaryTable += [PSCustomObject]@{
+				GadgetName = $offset.Name
+				Instances = $count
+			}
+		} else {
+			Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  No matches found for $($offset.Name)."
+			Write-Host ""
+		}
 	}
 }
 
 # Call the WriteNewBytes function to update the input file with the replaced values
-if ($replace -and $newfw) {
-	#Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Writing $([string]::Join(', ', ($chunkedFileContent | ForEach-Object { '0x{0:X8}' -f $_ }))) to $($filename)."
+if ($replace -and $newfw)
+{
+	#Add-Content -Path $logFile -Value "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Writing $([string]::Join(', ', ($chunkedFileContent | ForEach-Object { '0x{0:X8}' -f $_ }))) to $($filename)."
 	#Write-Host ""
 	WriteNewBytes -chunkedContent $chunkedFileContent -inputFile $filename
 }
@@ -899,7 +923,9 @@ if ($foundOffsets.Count -gt 0) {
     Write-Host ""
 
     # Format and display the list of found gadget offsets and their values
-    $foundOffsets | Format-Table -Property GadgetName, FileOffset, Value -AutoSize | Out-Host
+	$tableOutput = $foundOffsets | Format-Table -Property GadgetName, FileOffset, Value -AutoSize | Out-String
+	Add-Content -Path $logFile -Value $tableOutput
+	Write-Host $tableOutput
 
     # Output summary table of gadget values and their counts
     Write-Host "Summary of instances for each gadget value:"
@@ -949,7 +975,13 @@ if ($foundOffsets.Count -gt 0) {
 	# Output the total count of found gadget offsets
     $totalCount = ($foundOffsets | Measure-Object).Count
     Write-Host "Total gadgets count: $totalCount"
+	
+	# Write Log
+	if ($debug) { Set-Content -Path $logFile -Value $summaryString -Encoding utf8 -Force }
 } else {
 	# Output message indicating that no matching offsets were found
     Write-Host "No matching offsets found for $fwver."
+	
+	# Write Log
+	if ($debug) { Set-Content -Path $logFile -Value $summaryString -Encoding utf8 -Force }
 }
