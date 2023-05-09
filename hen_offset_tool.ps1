@@ -19,7 +19,7 @@ $logFile = "hen_offset_tool.log"
 if (-not $filename) {
 	# Show help and about info
     Write-Host ""
-    Write-Host "==========================================================================="
+    Write-Host "=============================================================================================="
     Write-Host "PS3HEN Offset Tool v1.0 [TEST VERSION 3]"
     Write-Host ""
     Write-Host "esc0rtd3w / PS3Xploit Team 2023"
@@ -37,10 +37,12 @@ if (-not $filename) {
     Write-Host ""
     Write-Host "Compare 2 Bins: ./hen_offset_tool.ps1 PS3HEN_482C.BIN PS3HEN_490C.BIN -compare"
     Write-Host ""
+    Write-Host "Swap/Replace Offsets: ./hen_offset_tool.ps1 482C.BIN 490C.BIN -replace -fwver 482C -newfw 490C"
+    Write-Host ""
     Write-Host "Dump Offsets To Text: ./hen_offset_tool.ps1 PS3HEN.BIN -fwver 490C -text"
     Write-Host ""
     Write-Host "Show All Debug Output: ./hen_offset_tool.ps1 PS3HEN.BIN -fwver 490C -debug"
-    Write-Host "==========================================================================="
+    Write-Host "=============================================================================================="
     Write-Host ""
     exit 1
 }
