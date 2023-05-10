@@ -1,6 +1,6 @@
 # PS3HEN Offset Tool
 
-### Usage: .\hen_offset_tool.ps1 [filename] [[filename2] -compare] [-fwver [version]] -debug -text
+##### Usage: .\hen_offset_tool.ps1 [filename] [[filename2] -compare] [-fwver [version]] -debug -text -log
      
 ### Examples<br>
 #### View Results. Ask For FW Version: ./hen_offset_tool.ps1 PS3HEN.BIN
