@@ -8,19 +8,21 @@ param (
     [switch]$text,       # Text output switch
     [switch]$opcode,     # Text output matching gadgets with PPC code output
     [switch]$replace,    # Replace current offset values with values from another firmware
-    #[switch]$newfw,      # Only used with -replace switch to specify new fw version
+    #[switch]$newfw,     # Only used with -replace switch to specify new fw version
 	[string]$newfw = $null,
+    [switch]$log,        # Output everything to log file
     [switch]$js          # Javascript output switch
 )
 
-$logFile = "hen_offset_tool.log"
+# Tool version
+$version = "1.1"
 
 # Check if filename parameter is provided
 if (-not $filename) {
 	# Show help and about info
     Write-Host ""
     Write-Host "=============================================================================================="
-    Write-Host "PS3HEN Offset Tool v1.0"
+    Write-Host "PS3HEN Offset Tool v$version"
     Write-Host ""
     Write-Host "esc0rtd3w / PS3Xploit Team 2023"
     Write-Host "http://www.ps3xploit.me"
@@ -33,31 +35,87 @@ if (-not $filename) {
     Write-Host "Examples"
     Write-Host "--------"
     Write-Host "View Results. Ask For FW Version: ./hen_offset_tool.ps1 PS3HEN.BIN"
-    Write-Host ""
     Write-Host "View Results. Specify FW Version: ./hen_offset_tool.ps1 PS3HEN.BIN -fwver 490C"
-    Write-Host ""
     Write-Host "Dump Offsets To Text: ./hen_offset_tool.ps1 PS3HEN.BIN -text"
-    Write-Host ""
     Write-Host "Dump Offsets To Javascript: ./hen_offset_tool.ps1 PS3HEN.BIN -js"
-    Write-Host ""
+    Write-Host "Log all output to text: ./hen_offset_tool.ps1 PS3HEN.BIN -log"
     Write-Host "Show All Debug Output: ./hen_offset_tool.ps1 PS3HEN.BIN -fwver 490C -debug"
-    Write-Host ""
     Write-Host "Compare Two Bins: ./hen_offset_tool.ps1 PS3HEN_482C.BIN PS3HEN_490C.BIN -compare"
-    Write-Host ""
     Write-Host "Swap/Replace Offsets: ./hen_offset_tool.ps1 482C.BIN 490C.BIN -replace -fwver 482C -newfw 490C"
     Write-Host "=============================================================================================="
     Write-Host ""
     exit 1
 }
 
-# Check if the file exists
-if (-not (Test-Path $filename)) {
-    Write-Host "Error: File not found"
-    exit 1
-}
-
 # Get the current script directory
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
+
+# Default timestamp formatting
+$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+$timestampFile = Get-Date -Format "yyyyMMdd-HHmmss"
+
+# Default file to write to for log
+$logFile = Join-Path -Path $scriptPath -ChildPath "hen_offset_tool_$timestampFile.log"
+
+# Write to text log
+function WriteToLog {
+    param (
+        [string]$logMessage,
+        [switch]$noTS
+    )
+	
+	$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+    if ($noTS) {
+        $formattedLogMessage = $logMessage
+    } else {
+        $formattedLogMessage = "[$timestamp] $logMessage"
+    }
+
+    $streamWriter = New-Object System.IO.StreamWriter($logFile, $true)
+    try {
+        $streamWriter.WriteLine($formattedLogMessage)
+    }
+    finally {
+        $streamWriter.Dispose()
+    }
+}
+
+# Write to screen
+function WriteToHost {
+    param (
+        [string]$hostMessage,
+        [switch]$noTS
+    )
+	
+	$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+    if ($noTS) {
+        $formattedHostMessage = $hostMessage
+    } else {
+        $formattedHostMessage = "[$timestamp] $hostMessage"
+    }
+	
+	Write-Host $formattedHostMessage
+}
+
+# Default debug log file header
+if ($log)
+{
+	WriteToLog -logMessage "PS3HEN Offset Tool Output Log"
+	WriteToLog -logMessage "-----------------------------"
+	WriteToLog -logMessage ""
+}
+
+# Check if the file exists
+if (-not (Test-Path $filename)) {
+    if ($log)
+	{
+		WriteToLog -logMessage "Error: File not found"
+	}
+    WriteToHost "Error: File not found"
+    exit 1
+}
 
 # Get PPC OP Code as hexadecimal value
 function Get_PPC_OP_Code {
@@ -223,9 +281,9 @@ function Get_PPC_OP_Code {
     }
 
     if ($ppcOpCodes.ContainsKey($hexValue)) {
-        Write-Host ("$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Input Value: $hexValue, PPC OP Code: $($ppcOpCodes[$hexValue])")
+        WriteToHost ("Input Value: $hexValue, PPC OP Code: $($ppcOpCodes[$hexValue])")
     } else {
-        Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  No matching PPC OP Code found for input value: $hexValue"
+        WriteToHost "No matching PPC OP Code found for input value: $hexValue"
     }
 }
 
@@ -252,29 +310,53 @@ function ByteSequenceEqual($a, $b) {
 }
 
 # Title and Info
-Write-Host ""
-Write-Host "PS3HEN Offset Tool v1.0"
-Write-Host ""
+WriteToHost ""
+WriteToHost "PS3HEN Offset Tool v$version"
+WriteToHost ""
 
 # Check switch to see if files should be compared
 if ($compare) {
     try {
 		# Read the first file
-		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename)..."
+		if ($log)
+		{
+			WriteToLog -logMessage "Reading $($filename)..."
+		}
+		WriteToHost "Reading $($filename)..."
+		
         $content1 = [System.IO.File]::ReadAllBytes($filename)
-		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename)...done"
-		Write-Host ""
+		
+		if ($log)
+		{
+			WriteToLog -logMessage "Reading $($filename)...done"
+		}
+		WriteToHost "Reading $($filename)...done"
+		WriteToHost ""
 		
 		# Read the second file
-		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename2)..."
+		if ($log)
+		{
+			WriteToLog -logMessage "Reading $($filename2)..."
+		}
+		WriteToHost "Reading $($filename2)..."
+		
         $content2 = [System.IO.File]::ReadAllBytes($filename2)
-		Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading $($filename2)...done"
-		Write-Host ""
+		
+		if ($log)
+		{
+			WriteToLog -logMessage "Reading $($filename2)...done"
+		}
+		WriteToHost "Reading $($filename2)...done"
+		WriteToHost ""
 
 		# Initialize an array to store the differences
         $differences = @()
 		
-        Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Comparing files..."
+		if ($log)
+		{
+			WriteToLog -logMessage "Comparing files..."
+		}
+        WriteToHost "Comparing files..."
 
 		# Iterate through the files comparing 4-byte chunks
         $chunkSize = 4
@@ -285,24 +367,43 @@ if ($compare) {
 
 			# Compare the chunks and store the differences
             if ($chunk1 -ne $chunk2) {
-                $differences += "Difference at byte 0x{0:X8}: 0x{1} - 0x{2}`r`n" -f $i, $chunk1, $chunk2
-                if ($debug) { Write-Host ("Difference at byte 0x{0:X8}: 0x{1} - 0x{2}" -f $i, $chunk1, $chunk2) }
+                $differences += "[$timestamp]  Difference at byte 0x{0:X8}: 0x{1} - 0x{2}`r`n" -f $i, $chunk1, $chunk2
+				if ($log)
+				{
+					WriteToLog -logMessage ("Difference at byte 0x{0:X8}: 0x{1} - 0x{2}" -f $i, $chunk1, $chunk2)
+				}
+                if ($debug)
+				{ 
+					WriteToHost ("Difference at byte 0x{0:X8}: 0x{1} - 0x{2}" -f $i, $chunk1, $chunk2) 
+				}
             }
         }
 		
-        Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Comparing files...done"
+        WriteToHost "Comparing files...done"
 
 		# Save the differences to a file or print a message if no differences are found
         if ($differences.Count -gt 0) {
             $differences | Set-Content -Path (Join-Path $scriptPath "changes.txt")
-            Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Differences saved to changes.txt."
+			if ($log)
+			{
+				WriteToLog -logMessage "Differences saved to changes.txt."
+			}
+            WriteToHost "Differences saved to changes.txt."
 			exit 1
         } else {
-            Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  No differences found between the files."
+			if ($log)
+			{
+				WriteToLog -logMessage "No differences found between the files."
+			}
+            WriteToHost "No differences found between the files."
 			exit 1
         }
     } catch {
-        Write-Error "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  An error occurred while comparing the files: $_"
+		if ($log)
+		{
+			WriteToLog -logMessage "An error occurred while comparing the files: $_"
+		}
+        Write-Error "[$timestamp]  An error occurred while comparing the files: $_"
 		exit 1
     }
 }
@@ -314,8 +415,12 @@ if (-not $fwver) {
     } while (-not ($fwver -eq "480C" -or $fwver -eq "481C" -or $fwver -eq "482C" -or $fwver -eq "482D" -or $fwver -eq "483C" -or $fwver -eq "484C" -or $fwver -eq "484D" -or $fwver -eq "490C"))
 }
 
-Write-Host ""
-Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Loading offsets dictionary..."
+if ($log)
+{
+	WriteToLog -logMessage "Loading offsets dictionary..."
+}
+WriteToHost ""
+WriteToHost "Loading offsets dictionary..."
 
 # Load offsets dictionary for the selected firmware version
 $offsetsDictionary = @{
@@ -672,11 +777,20 @@ $offsetsDictionary = @{
         "lv2_unk20" = "007F0190"
     }
 }
-Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Loading offsets dictionary...done"
-Write-Host ""
+
+if ($log)
+{
+	WriteToLog -logMessage "Loading offsets dictionary...done"
+}
+WriteToHost "Loading offsets dictionary...done"
+WriteToHost ""
 
 # Define memory ranges for each section of the binary file
-Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Loading offset ranges..."
+if ($log)
+{
+	WriteToLog -logMessage "Loading offset ranges..."
+}
+WriteToHost "Loading offset ranges..."
 $ranges = @(
     @{
         Name = "webkit_vsh_gadgets_1"
@@ -734,12 +848,21 @@ $ranges = @(
         End = 0x0010FFFF
     }
 )
-Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Loading offset ranges...done"
-Write-Host ""
+
+if ($log)
+{
+	WriteToLog -logMessage "Loading offset ranges...done"
+}
+WriteToHost "Loading offset ranges...done"
+WriteToHost ""
 
 # Check if the selected firmware version is valid
 if (-not $offsetsDictionary.ContainsKey($fwver)) {
-    Write-Host "Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Error: Invalid firmware version. Available versions: $($offsetsDictionary.Keys -join ', ')"
+	if ($log)
+	{
+		WriteToLog -logMessage "Error: Invalid firmware version. Available versions: $($offsetsDictionary.Keys -join ', ')"
+	}
+    WriteToHost "Error: Invalid firmware version. Available versions: $($offsetsDictionary.Keys -join ', ')"
     exit 1
 }
 
@@ -771,8 +894,12 @@ function WriteNewBytes ($chunkedContent, $inputFile) {
 $currentDictionary = $offsetsDictionary.$fwver
 
 # Read binary file content into memory
-Write-Host "*** THIS STEP MAY TAKE A WHILE DEPENDING ON THE SPEED OF YOUR COMPUTER ***"
-Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading binary file content into 0x4 byte chunks..."
+if ($log)
+{
+	WriteToLog -logMessage "Reading binary file content into 0x4 byte chunks..."
+}
+WriteToHost "*** THIS STEP MAY TAKE A WHILE DEPENDING ON THE SPEED OF YOUR COMPUTER ***" -noTS
+WriteToHost "Reading binary file content into 0x4 byte chunks..."
 $fileContent = [System.IO.File]::ReadAllBytes($filename)
 
 # Divide the file content into 4-byte chunks
@@ -785,17 +912,26 @@ $chunkedFileContent = -join ($fileContent | % { '{0:X2}' -f $_ }) -split '(?<=\G
 	# Get the range that the current offset falls within
     $range = $ranges | Where-Object { $currentOffset -ge [UInt32]($_.Start) -and $currentOffset -lt [UInt32]($_.End) } | Select-Object -First 1
 	# Write debug information if debug mode is enabled
-    #if ($debug) { Write-Host "Processing chunk: $_     Offset: $offset     Range: $($range.Name)" }
+    #if ($debug) { WriteToHost "Processing chunk: $_     Offset: $offset     Range: $($range.Name)" }
 	# Increment the chunk index
     $chunkIndex++
 	# Convert the hexadecimal string to an unsigned 32-bit integer
     [UInt32]("0x" + $_) 
 }
 
-Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Reading binary file content in 0x4 byte chunks...done"
-Write-Host ""
-Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for gadgets..."
-Write-Host ""
+if ($log)
+{
+	WriteToLog -logMessage "Reading binary file content in 0x4 byte chunks...done"
+}
+WriteToHost "Reading binary file content in 0x4 byte chunks...done"
+WriteToHost ""
+
+if ($log)
+{
+	WriteToLog -logMessage "Searching for gadgets..."
+}
+WriteToHost "Searching for gadgets..."
+WriteToHost ""
 
 # Search for each offset value in the offsets dictionary
 $summaryTable = @()
@@ -806,7 +942,11 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 	
 	# Convert the offset value to UInt32 and display a search message
     $searchValue = [UInt32]("0x" + $offset.Value)
-    Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for $($offset.Name) with value 0x$($offset.Value)..."
+	if ($log)
+	{
+		WriteToLog -logMessage "Searching for $($offset.Name) with value 0x$($offset.Value)..."
+	}
+    WriteToHost "Searching for $($offset.Name) with value 0x$($offset.Value)..."
 
 	# Initialize a counter for number of instances found
     $count = 0
@@ -826,8 +966,13 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 
             $foundAtOffset = '0x{0:X8}' -f (($i * 4) + 0x4)
             $formattedBytes = '{0:X8}' -f $searchValue
-            if ($debug) { 
-				Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Found at offset: $foundAtOffset -> $formattedBytes (Search Value: 0x$('{0:X8}' -f $searchValue))"
+			if ($log)
+			{
+				WriteToLog -logMessage "Found at offset: $foundAtOffset -> $formattedBytes (Search Value: 0x$('{0:X8}' -f $searchValue))"
+			}
+            if ($debug) 
+			{ 
+				WriteToHost "Found at offset: $foundAtOffset -> $formattedBytes (Search Value: 0x$('{0:X8}' -f $searchValue))"
 			}
 
             # Increment the instance counter and check if the match already exists in the results array
@@ -844,18 +989,26 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 					Instances = $count
 				}
 				# Display the message for a new match found
+				if ($log)
+				{
+					WriteToLog -logMessage "New match found for $($offset.Name) at offset $($foundAtOffset): $count instance(s) found."
+				}
 				if ($debug)
 				{ 
-					Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  New match found for $($offset.Name) at offset $($foundAtOffset): $count instance(s) found."
+					WriteToHost "New match found for $($offset.Name) at offset $($foundAtOffset): $count instance(s) found."
 				}
 			} 
 			else
 			{
 				# Update the count if the match already exists in the results array
 				$existingOffset.Instances = $count
+				if ($log)
+				{
+					WriteToLog -logMessage "Additional match found for $($existingOffset.Name) at offset $($existingOffset.FileOffset): $count instance(s) found."
+				}
 				if ($debug)
 				{ 
-					Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Additional match found for $($existingOffset.Name) at offset $($existingOffset.FileOffset): $count instance(s) found."
+					WriteToHost "Additional match found for $($existingOffset.Name) at offset $($existingOffset.FileOffset): $count instance(s) found."
 				}
 			}
         }
@@ -876,21 +1029,36 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 				if ($chunkedFileContent[$i] -eq $searchValue -and $i -gt 0) {
 					# Replace the current value with the new replacement value in the chunked file content
 					$chunkedFileContent[$i] = $replacementValue
+					if ($log)
+					{
+						WriteToLog -logMessage "Replaced at offset: 0x$('{0:X8}' -f ($i * 4)) with 0x$('{0:X8}' -f $replacementValue) for $($offset.Name)."
+					}
 					if ($debug) {
-						Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Replaced at offset: 0x$('{0:X8}' -f ($i * 4)) with 0x$('{0:X8}' -f $replacementValue) for $($offset.Name)."
+						WriteToHost "Replaced at offset: 0x$('{0:X8}' -f ($i * 4)) with 0x$('{0:X8}' -f $replacementValue) for $($offset.Name)."
 					}
 				}
 			}
 		} else {
 			# Output debug information if no replacement value is found for the current offset in the new firmware offsets
-			if ($debug) { Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  No replacement value found for $($offset.Name) in new firmware offsets." }
+			if ($log)
+			{
+				WriteToLog -logMessage "No replacement value found for $($offset.Name) in new firmware offsets."
+			}
+			if ($debug) 
+			{ 
+				WriteToHost "No replacement value found for $($offset.Name) in new firmware offsets." 
+			}
 		}
 
 		# Display the total number of instances found for the current offset
 		if ($offsetFound) {
 			$formattedCount = '{0:d}' -f $count
-			Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Found $formattedCount matches for $($offset.Name)."
-			Write-Host ""
+			if ($log)
+			{
+				WriteToLog -logMessage "Found $formattedCount matches for $($offset.Name)."
+			}
+			WriteToHost "Found $formattedCount matches for $($offset.Name)."
+			WriteToHost ""
 
 			# Add a summary of the results to the summary table
 			$summaryTable += [PSCustomObject]@{
@@ -898,8 +1066,12 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 				Instances = $count
 			}
 		} else {
-			Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  No matches found for $($offset.Name)."
-			Write-Host ""
+			if ($log)
+			{
+				WriteToLog -logMessage "No matches found for $($offset.Name)."
+			}
+			WriteToHost "No matches found for $($offset.Name)."
+			WriteToHost ""
 		}
 	}
 }
@@ -907,35 +1079,63 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 # Call the WriteNewBytes function to update the input file with the replaced values
 if ($replace -and $newfw)
 {
-	#Add-Content -Path $logFile -Value "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Writing $([string]::Join(', ', ($chunkedFileContent | ForEach-Object { '0x{0:X8}' -f $_ }))) to $($filename)."
-	#Write-Host ""
+	if ($log)
+	{
+		WriteToLog -logMessage "Writing replaced bytes to $($filename)"
+		#WriteToLog -logMessage "Writing $([string]::Join(', ', ($chunkedFileContent | ForEach-Object { '0x{0:X8}' -f $_ }))) to $($filename)."
+	}
+	#WriteToHost ""
 	WriteNewBytes -chunkedContent $chunkedFileContent -inputFile $filename
 }
 
 # Output results
-Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Searching for gadgets...done"
-Write-Host ""
-Write-Host ""
+if ($log)
+{
+	WriteToLog -logMessage "Searching for gadgets...done"
+}
+WriteToHost "Searching for gadgets...done"
+WriteToHost ""
+WriteToHost ""
 
 # Check if any gadget offsets were found
 if ($foundOffsets.Count -gt 0) {
     # Output summary of found gadget offsets and their values
-    Write-Host "Found gadget offsets and values summary"
-    Write-Host ""
+	if ($log)
+	{
+		WriteToLog -logMessage "Found gadget offsets and values summary"
+	}
+    WriteToHost "Found gadget offsets and values summary"
+    WriteToHost ""
     
     # Display input file path and firmware version
-    Write-Host "Input file: $filename | Firmware version: ${fwver}"
-    Write-Host ""
+	if ($log)
+	{
+		WriteToLog -logMessage "Input file: $filename | Firmware version: ${fwver}"
+	}
+    WriteToHost "Input file: $filename | Firmware version: ${fwver}"
+    WriteToHost ""
 
     # Format and display the list of found gadget offsets and their values
 	$tableOutput = $foundOffsets | Format-Table -Property GadgetName, FileOffset, Value -AutoSize | Out-String
-	Add-Content -Path $logFile -Value $tableOutput
-	Write-Host $tableOutput
+	if($log)
+	{
+		WriteToLog -logMessage  $tableOutput
+	}
+	WriteToHost $tableOutput
 
     # Output summary table of gadget values and their counts
-    Write-Host "Summary of instances for each gadget value:"
-    Write-Host ""
+	if ($log)
+	{
+		WriteToLog -logMessage "Summary of instances for each gadget value:"
+	}
+    WriteToHost "Summary of instances for each gadget value:"
+    WriteToHost ""
     $summaryTable | Format-Table -AutoSize | Out-Host
+	if($log)
+	{
+		$summaryString = $summaryTable | Format-Table -AutoSize | Out-String
+		WriteToLog -logMessage $summaryString
+	}
 
     if ($js) {
         $jsOutput = @()
@@ -947,7 +1147,11 @@ if ($foundOffsets.Count -gt 0) {
         }
 
         $jsOutput -join "`n" | Out-File -FilePath (Join-Path $scriptPath "gadget_offsets_${fwver}.js")
-        Write-Host "JavaScript output saved to gadget_offsets_${fwver}.js"
+		if ($log)
+		{
+			WriteToLog -logMessage "JavaScript output saved to gadget_offsets_${fwver}.js"
+		}
+        WriteToHost "JavaScript output saved to gadget_offsets_${fwver}.js"
     }
 	
 	if ($opcode) {
@@ -965,28 +1169,42 @@ if ($foundOffsets.Count -gt 0) {
 		}
 
 		$opcodeOutput -join "`n" | Out-File -FilePath (Join-Path $scriptPath "gadget_opcodes_${fwver}.txt")
-		Write-Host "OpCode output saved to gadget_opcodes_${fwver}.txt"
+		if ($log)
+		{
+			WriteToLog -logMessage "OpCode output saved to gadget_opcodes_${fwver}.txt"
+		}
+		WriteToHost "OpCode output saved to gadget_opcodes_${fwver}.txt"
 	}
 
 	# If the text output switch is enabled, save the results to a file
     if ($text) {
         $outputFilename = "offsets_output.txt"
-        Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Saving results to $outputFilename..."
+		if ($log)
+		{
+			WriteToLog -logMessage "Saving results to $outputFilename..."
+		}
+        WriteToHost "Saving results to $outputFilename..."
         $foundOffsets | Format-Table -Property GadgetName, FileOffset, Value -AutoSize | Out-File $outputFilename
-        Write-Host "$(Get-Date -Format '[yyyy-MM-dd HH:mm:ss]')  Saving results to $outputFilename...done"
-        Write-Host ""
+		if ($log)
+		{
+			WriteToLog -logMessage "Saving results to $outputFilename...done"
+		}
+        WriteToHost "Saving results to $outputFilename...done"
+        WriteToHost ""
     }
 
 	# Output the total count of found gadget offsets
     $totalCount = ($foundOffsets | Measure-Object).Count
-    Write-Host "Total gadgets count: $totalCount"
-	
-	# Write Log
-	if ($debug) { Set-Content -Path $logFile -Value $summaryString -Encoding utf8 -Force }
+	if ($log)
+	{
+		WriteToLog -logMessage "Total gadgets count: $totalCount"
+	}
+    WriteToHost "Total gadgets count: $totalCount"
 } else {
 	# Output message indicating that no matching offsets were found
-    Write-Host "No matching offsets found for $fwver."
-	
-	# Write Log
-	if ($debug) { Set-Content -Path $logFile -Value $summaryString -Encoding utf8 -Force }
+	if ($log)
+	{
+		WriteToLog -logMessage "No matching offsets found for $fwver."
+	}
+    WriteToHost "No matching offsets found for $fwver."
 }
