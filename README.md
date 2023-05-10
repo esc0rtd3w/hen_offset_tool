@@ -16,3 +16,5 @@
 #### Swap/Replace Offsets: ./hen_offset_tool.ps1 PS3HEN_482C PS3HEN_490 -replace -fwver 482C -newfw 490C
 
 #### Show All Debug Output: ./hen_offset_tool.ps1 PS3HEN.BIN -debug
+
+#### Log all output to text: ./hen_offset_tool.ps1 PS3HEN.BIN -log
