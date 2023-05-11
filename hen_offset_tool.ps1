@@ -1119,16 +1119,16 @@ if ($foundOffsets.Count -gt 0) {
 	$tableOutput = $foundOffsets | Format-Table -Property GadgetName, FileOffset, Value -AutoSize | Out-String
 	if($log)
 	{
-		WriteToLog -logMessage  $tableOutput
+		WriteToLog -logMessage  $tableOutput -noTS
 	}
 	WriteToHost $tableOutput
 
     # Output summary table of gadget values and their counts
 	if ($log)
 	{
-		WriteToLog -logMessage "Summary of instances for each gadget value:"
+		WriteToLog -logMessage "Summary of instances for each gadget value:" -noTS
 	}
-    WriteToHost "Summary of instances for each gadget value:"
+    WriteToHost "Summary of instances for each gadget value:" -noTS
     WriteToHost ""
     $summaryTable | Format-Table -AutoSize | Out-Host
 	if($log)
@@ -1197,14 +1197,14 @@ if ($foundOffsets.Count -gt 0) {
     $totalCount = ($foundOffsets | Measure-Object).Count
 	if ($log)
 	{
-		WriteToLog -logMessage "Total gadgets count: $totalCount"
+		WriteToLog -logMessage "Total gadgets count: $totalCount" -noTS
 	}
-    WriteToHost "Total gadgets count: $totalCount"
+    WriteToHost "Total gadgets count: $totalCount" -noTS
 } else {
 	# Output message indicating that no matching offsets were found
 	if ($log)
 	{
-		WriteToLog -logMessage "No matching offsets found for $fwver."
+		WriteToLog -logMessage "No matching offsets found for $fwver." -noTS
 	}
-    WriteToHost "No matching offsets found for $fwver."
+    WriteToHost "No matching offsets found for $fwver." -noTS
 }
