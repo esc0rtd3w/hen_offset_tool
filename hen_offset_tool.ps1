@@ -102,9 +102,8 @@ function WriteToHost {
 # Default debug log file header
 if ($log)
 {
-	WriteToLog -logMessage "PS3HEN Offset Tool Output Log"
-	WriteToLog -logMessage "-----------------------------"
-	WriteToLog -logMessage ""
+	WriteToLog -logMessage "PS3HEN Offset Tool Output Log" -noTS
+	WriteToLog -logMessage "-----------------------------`n" -noTS
 }
 
 # Check if the file exists
