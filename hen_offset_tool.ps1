@@ -408,7 +408,7 @@ if ($compare) {
 
 # Check if the fwver parameter is provided, and prompt the user for it if it isn't
 if (-not $fwver) {
-	$fwtext = "`nSelect firmware version: 480C, 481C, 482C, 482D, 483C, 484C, 484D, 485C,  486C,  487C,  488C,  489C, 490C"
+	$fwtext = "`nSelect firmware version: 480C, 481C, 482C, 482D, 483C, 484C, 484D, 485C, 486C, 487C, 488C, 489C, 490C"
     do {
         $fwver = Read-Host -Prompt $fwtext
     } while (-not ($fwver -eq "480C" -or $fwver -eq "481C" -or $fwver -eq "482C" -or $fwver -eq "482D" -or $fwver -eq "483C" -or $fwver -eq "484C" -or $fwver -eq "484D" -or $fwver -eq "485C" -or $fwver -eq "486C" -or $fwver -eq "487C" -or $fwver -eq "488C" -or $fwver -eq "489C" -or $fwver -eq "490C"))
