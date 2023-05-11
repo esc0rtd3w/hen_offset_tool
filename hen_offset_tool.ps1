@@ -1094,26 +1094,26 @@ if ($log)
 	WriteToLog -logMessage "Searching for gadgets...done"
 }
 WriteToHost "Searching for gadgets...done"
-WriteToHost ""
-WriteToHost ""
+WriteToHost "" -noTS
+WriteToHost "" -noTS
 
 # Check if any gadget offsets were found
 if ($foundOffsets.Count -gt 0) {
     # Output summary of found gadget offsets and their values
 	if ($log)
 	{
-		WriteToLog -logMessage "Found gadget offsets and values summary"
+		WriteToLog -logMessage "Found gadget offsets and values summary" -noTS
 	}
-    WriteToHost "Found gadget offsets and values summary"
-    WriteToHost ""
+    WriteToHost "Found gadget offsets and values summary" -noTS
+    WriteToHost "" -noTS
     
     # Display input file path and firmware version
 	if ($log)
 	{
-		WriteToLog -logMessage "Input file: $filename | Firmware version: ${fwver}"
+		WriteToLog -logMessage "Input file: $filename | Firmware version: ${fwver}" -noTS
 	}
-    WriteToHost "Input file: $filename | Firmware version: ${fwver}"
-    WriteToHost ""
+    WriteToHost "Input file: $filename | Firmware version: ${fwver}" -noTS
+    WriteToHost "" -noTS
 
     # Format and display the list of found gadget offsets and their values
 	$tableOutput = $foundOffsets | Format-Table -Property GadgetName, FileOffset, Value -AutoSize | Out-String
@@ -1121,7 +1121,7 @@ if ($foundOffsets.Count -gt 0) {
 	{
 		WriteToLog -logMessage  $tableOutput -noTS
 	}
-	WriteToHost $tableOutput
+	WriteToHost $tableOutput -noTS
 
     # Output summary table of gadget values and their counts
 	if ($log)
@@ -1129,7 +1129,7 @@ if ($foundOffsets.Count -gt 0) {
 		WriteToLog -logMessage "Summary of instances for each gadget value:" -noTS
 	}
     WriteToHost "Summary of instances for each gadget value:" -noTS
-    WriteToHost ""
+    WriteToHost "" -noTS
     $summaryTable | Format-Table -AutoSize | Out-Host
 	if($log)
 	{
