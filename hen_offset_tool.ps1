@@ -15,20 +15,20 @@ param (
 )
 
 # Tool version
-$version = "1.1"
+$version = "1.2"
 
 # Check if filename parameter is provided
 if (-not $filename) {
 	# Show help and about info
     Write-Host ""
-    Write-Host "=============================================================================================="
+    Write-Host "==================================================================================================="
     Write-Host "PS3HEN Offset Tool v$version"
     Write-Host ""
     Write-Host "esc0rtd3w / PS3Xploit Team 2023"
     Write-Host "http://www.ps3xploit.me"
     Write-Host ""
     Write-Host ""
-    Write-Host "Usage: .\hen_offset_tool.ps1 [filename] [[filename2] -compare] [-fwver [version]] -debug -text"
+    Write-Host "Usage: .\hen_offset_tool.ps1 [filename] [[filename2] -compare] [-fwver [version]] -debug -text -log"
     Write-Host ""
     Write-Host ""
     Write-Host ""
@@ -42,7 +42,7 @@ if (-not $filename) {
     Write-Host "Show All Debug Output: ./hen_offset_tool.ps1 PS3HEN.BIN -fwver 490C -debug"
     Write-Host "Compare Two Bins: ./hen_offset_tool.ps1 PS3HEN_482C.BIN PS3HEN_490C.BIN -compare"
     Write-Host "Swap/Replace Offsets: ./hen_offset_tool.ps1 482C.BIN 490C.BIN -replace -fwver 482C -newfw 490C"
-    Write-Host "=============================================================================================="
+    Write-Host "==================================================================================================="
     Write-Host ""
     exit 1
 }
@@ -310,9 +310,7 @@ function ByteSequenceEqual($a, $b) {
 }
 
 # Title and Info
-WriteToHost ""
-WriteToHost "PS3HEN Offset Tool v$version"
-WriteToHost ""
+WriteToHost "`n`nPS3HEN Offset Tool v$version" -noTS
 
 # Check switch to see if files should be compared
 if ($compare) {
@@ -331,7 +329,7 @@ if ($compare) {
 			WriteToLog -logMessage "Reading $($filename)...done"
 		}
 		WriteToHost "Reading $($filename)...done"
-		WriteToHost ""
+		WriteToHost "" -noTS
 		
 		# Read the second file
 		if ($log)
@@ -347,7 +345,7 @@ if ($compare) {
 			WriteToLog -logMessage "Reading $($filename2)...done"
 		}
 		WriteToHost "Reading $($filename2)...done"
-		WriteToHost ""
+		WriteToHost "" -noTS
 
 		# Initialize an array to store the differences
         $differences = @()
@@ -410,16 +408,17 @@ if ($compare) {
 
 # Check if the fwver parameter is provided, and prompt the user for it if it isn't
 if (-not $fwver) {
+	$fwtext = "`nSelect firmware version: 480C, 481C, 482C, 482D, 483C, 484C, 484D, 485C,  486C,  487C,  488C,  489C, 490C"
     do {
-        $fwver = Read-Host -Prompt "Please select firmware version (Available versions: 480C, 481C, 482C, 482D, 483C, 484C, 484D, 490C)"
-    } while (-not ($fwver -eq "480C" -or $fwver -eq "481C" -or $fwver -eq "482C" -or $fwver -eq "482D" -or $fwver -eq "483C" -or $fwver -eq "484C" -or $fwver -eq "484D" -or $fwver -eq "490C"))
+        $fwver = Read-Host -Prompt $fwtext
+    } while (-not ($fwver -eq "480C" -or $fwver -eq "481C" -or $fwver -eq "482C" -or $fwver -eq "482D" -or $fwver -eq "483C" -or $fwver -eq "484C" -or $fwver -eq "484D" -or $fwver -eq "485C" -or $fwver -eq "486C" -or $fwver -eq "487C" -or $fwver -eq "488C" -or $fwver -eq "489C" -or $fwver -eq "490C"))
 }
 
 if ($log)
 {
 	WriteToLog -logMessage "Loading offsets dictionary..."
 }
-WriteToHost ""
+WriteToHost "" -noTS
 WriteToHost "Loading offsets dictionary..."
 
 # Load offsets dictionary for the selected firmware version
@@ -732,6 +731,226 @@ $offsetsDictionary = @{
 		"lv2_unk19" = "007E0000"
         "lv2_unk20" = "007F0190"
     }
+	"485C" = @{
+        "unk0_mr_r4_r29"  = "0057CE48"
+        "gadget_mod2_addr"  = "00013B74"
+        "unk4_ld_r0_r1"  = "00019D44"
+        "gadget_mod7_addr"  = "0001A6AC"
+        "unk3_sys_ppu_thread_create"  = "0001DCB0"
+        "unk2_stw_r3_r31"  = "00075480"
+        "gadget_mod3_addr"  = "000B8E00"
+        "gadget_mod4a_addr"  = "000D9684"
+        "gadget_mod8_addr"  = "002BACB8"
+        "gadget_mod4b_addr" = "0042C778"
+        "unk1_ld_r0_r1" = "00583044"
+        "gadget_mod1_addr" = "0060EFD8"
+        "unk6" = "006D9714"
+        "unk7_li_r3_0" = "006D9754"
+        "unk8" = "006D975C"
+        "unk9_set_r29" = "006EAA54"
+        "unk10_28b_sc" = "006EC938"
+        "unk11" = "0070784C"
+        "vsh_ps3hen_key_toc" = "0070786C"
+        "vsh_opd_patch+0x4" = "00096D60"
+        "unk12_lwz_r11_r3" = "00474750"
+        "TOC" = "006F5558"
+        "lv2_unk1"  = "00003F80"
+        "lv2_unk2"  = "0000BB78"
+        "lv2_unk3"  = "000137D8"
+        "lv2_unk4"  = "00020E98"
+        "lv2_unk5"  = "00025A34"
+        "lv2_unk6"  = "0004060C"
+        "lv2_unk7"  = "0005028C"
+        "lv2_unk8"  = "0007B410"
+        "lv2_unk9"  = "0012EF58"
+        "lv2_unk10" = "001648B8"
+        "lv2_unk11" = "00198468"
+        "lv2_unk12" = "001D4B04"
+        "lv2_unk13" = "001D4C58"
+        "lv2_unk14" = "00294828"
+        "lv2_unk15" = "00670040"
+        "lv2_unk16" = "00670000"
+        "lv2_unk17" = "00670090"
+        "lv2_unk18" = "00672000"
+        "lv2_unk19" = "007E0000"
+        "lv2_unk20" = "007F0190"
+    }
+	"486C" = @{
+        "unk0_mr_r4_r29"  = "0057CE48"
+        "gadget_mod2_addr"  = "00013B74"
+        "unk4_ld_r0_r1"  = "00019D44"
+        "gadget_mod7_addr"  = "0001A6AC"
+        "unk3_sys_ppu_thread_create"  = "0001DCB0"
+        "unk2_stw_r3_r31"  = "00075480"
+        "gadget_mod3_addr"  = "000B8E00"
+        "gadget_mod4a_addr"  = "000D9684"
+        "gadget_mod8_addr"  = "002BACB8"
+        "gadget_mod4b_addr" = "0042C778"
+        "unk1_ld_r0_r1" = "00583044"
+        "gadget_mod1_addr" = "0060EFD8"
+        "unk6" = "006D9714"
+        "unk7_li_r3_0" = "006D9754"
+        "unk8" = "006D975C"
+        "unk9_set_r29" = "006EAA54"
+        "unk10_28b_sc" = "006EC938"
+        "unk11" = "0070784C"
+        "vsh_ps3hen_key_toc" = "0070786C"
+        "vsh_opd_patch+0x4" = "00096D60"
+        "unk12_lwz_r11_r3" = "00474750"
+        "TOC" = "006F5558"
+        "lv2_unk1"  = "00003F80"
+        "lv2_unk2"  = "0000BB78"
+        "lv2_unk3"  = "000137D8"
+        "lv2_unk4"  = "00020E98"
+        "lv2_unk5"  = "00025A34"
+        "lv2_unk6"  = "0004060C"
+        "lv2_unk7"  = "0005028C"
+        "lv2_unk8"  = "0007B410"
+        "lv2_unk9"  = "0012EF58"
+        "lv2_unk10" = "001648B8"
+        "lv2_unk11" = "00198468"
+        "lv2_unk12" = "001D4B04"
+        "lv2_unk13" = "001D4C58"
+        "lv2_unk14" = "00294828"
+        "lv2_unk15" = "00670040"
+        "lv2_unk16" = "00670000"
+        "lv2_unk17" = "00670090"
+        "lv2_unk18" = "00672000"
+        "lv2_unk19" = "007E0000"
+        "lv2_unk20" = "007F0190"
+    }
+	"487C" = @{
+        "unk0_mr_r4_r29"  = "0057CE48"
+        "gadget_mod2_addr"  = "00013B74"
+        "unk4_ld_r0_r1"  = "00019D44"
+        "gadget_mod7_addr"  = "0001A6AC"
+        "unk3_sys_ppu_thread_create"  = "0001DCB0"
+        "unk2_stw_r3_r31"  = "00075480"
+        "gadget_mod3_addr"  = "000B8E00"
+        "gadget_mod4a_addr"  = "000D9684"
+        "gadget_mod8_addr"  = "002BACB8"
+        "gadget_mod4b_addr" = "0042C778"
+        "unk1_ld_r0_r1" = "00583044"
+        "gadget_mod1_addr" = "0060EFD8"
+        "unk6" = "006D9714"
+        "unk7_li_r3_0" = "006D9754"
+        "unk8" = "006D975C"
+        "unk9_set_r29" = "006EAA54"
+        "unk10_28b_sc" = "006EC938"
+        "unk11" = "0070784C"
+        "vsh_ps3hen_key_toc" = "0070786C"
+        "vsh_opd_patch+0x4" = "00096D60"
+        "unk12_lwz_r11_r3" = "00474750"
+        "TOC" = "006F5558"
+        "lv2_unk1"  = "00003F80"
+        "lv2_unk2"  = "0000BB78"
+        "lv2_unk3"  = "000137D8"
+        "lv2_unk4"  = "00020E98"
+        "lv2_unk5"  = "00025A34"
+        "lv2_unk6"  = "0004060C"
+        "lv2_unk7"  = "0005028C"
+        "lv2_unk8"  = "0007B410"
+        "lv2_unk9"  = "0012EF58"
+        "lv2_unk10" = "001648B8"
+        "lv2_unk11" = "00198468"
+        "lv2_unk12" = "001D4B04"
+        "lv2_unk13" = "001D4C58"
+        "lv2_unk14" = "00294828"
+        "lv2_unk15" = "00670040"
+        "lv2_unk16" = "00670000"
+        "lv2_unk17" = "00670090"
+        "lv2_unk18" = "00672000"
+        "lv2_unk19" = "007E0000"
+        "lv2_unk20" = "007F0190"
+    }
+	"488C" = @{
+        "unk0_mr_r4_r29"  = "0057CE48"
+        "gadget_mod2_addr"  = "00013B74"
+        "unk4_ld_r0_r1"  = "00019D44"
+        "gadget_mod7_addr"  = "0001A6AC"
+        "unk3_sys_ppu_thread_create"  = "0001DCB0"
+        "unk2_stw_r3_r31"  = "00075480"
+        "gadget_mod3_addr"  = "000B8E00"
+        "gadget_mod4a_addr"  = "000D9684"
+        "gadget_mod8_addr"  = "002BACB8"
+        "gadget_mod4b_addr" = "0042C778"
+        "unk1_ld_r0_r1" = "00583044"
+        "gadget_mod1_addr" = "0060EFD8"
+        "unk6" = "006D9714"
+        "unk7_li_r3_0" = "006D9754"
+        "unk8" = "006D975C"
+        "unk9_set_r29" = "006EAA54"
+        "unk10_28b_sc" = "006EC938"
+        "unk11" = "0070784C"
+        "vsh_ps3hen_key_toc" = "0070786C"
+        "vsh_opd_patch+0x4" = "00096D60"
+        "unk12_lwz_r11_r3" = "00474750"
+        "TOC" = "006F5558"
+        "lv2_unk1"  = "00003F80"
+        "lv2_unk2"  = "0000BB78"
+        "lv2_unk3"  = "000137D8"
+        "lv2_unk4"  = "00020E98"
+        "lv2_unk5"  = "00025A34"
+        "lv2_unk6"  = "0004060C"
+        "lv2_unk7"  = "0005028C"
+        "lv2_unk8"  = "0007B410"
+        "lv2_unk9"  = "0012EF58"
+        "lv2_unk10" = "001648B8"
+        "lv2_unk11" = "00198468"
+        "lv2_unk12" = "001D4B04"
+        "lv2_unk13" = "001D4C58"
+        "lv2_unk14" = "00294828"
+        "lv2_unk15" = "00670040"
+        "lv2_unk16" = "00670000"
+        "lv2_unk17" = "00670090"
+        "lv2_unk18" = "00672000"
+        "lv2_unk19" = "007E0000"
+        "lv2_unk20" = "007F0190"
+    }
+	"489C" = @{
+        "unk0_mr_r4_r29"  = "0057CE48"
+        "gadget_mod2_addr"  = "00013B74"
+        "unk4_ld_r0_r1"  = "00019D44"
+        "gadget_mod7_addr"  = "0001A6AC"
+        "unk3_sys_ppu_thread_create"  = "0001DCB0"
+        "unk2_stw_r3_r31"  = "00075480"
+        "gadget_mod3_addr"  = "000B8E00"
+        "gadget_mod4a_addr"  = "000D9684"
+        "gadget_mod8_addr"  = "002BACB8"
+        "gadget_mod4b_addr" = "0042C778"
+        "unk1_ld_r0_r1" = "00583044"
+        "gadget_mod1_addr" = "0060EFD8"
+        "unk6" = "006D9714"
+        "unk7_li_r3_0" = "006D9754"
+        "unk8" = "006D975C"
+        "unk9_set_r29" = "006EAA54"
+        "unk10_28b_sc" = "006EC938"
+        "unk11" = "0070784C"
+        "vsh_ps3hen_key_toc" = "0070786C"
+        "vsh_opd_patch+0x4" = "00096D60"
+        "unk12_lwz_r11_r3" = "00474750"
+        "TOC" = "006F5558"
+        "lv2_unk1"  = "00003F80"
+        "lv2_unk2"  = "0000BB78"
+        "lv2_unk3"  = "000137D8"
+        "lv2_unk4"  = "00020E98"
+        "lv2_unk5"  = "00025A34"
+        "lv2_unk6"  = "0004060C"
+        "lv2_unk7"  = "0005028C"
+        "lv2_unk8"  = "0007B410"
+        "lv2_unk9"  = "0012EF58"
+        "lv2_unk10" = "001648B8"
+        "lv2_unk11" = "00198468"
+        "lv2_unk12" = "001D4B04"
+        "lv2_unk13" = "001D4C58"
+        "lv2_unk14" = "00294828"
+        "lv2_unk15" = "00670040"
+        "lv2_unk16" = "00670000"
+        "lv2_unk17" = "00670090"
+        "lv2_unk18" = "00672000"
+        "lv2_unk19" = "007E0000"
+        "lv2_unk20" = "007F0190"
+    }
 	"490C" = @{
         "unk0_mr_r4_r29"  = "0057CE44"
         "gadget_mod2_addr"  = "00013B74"
@@ -783,7 +1002,7 @@ if ($log)
 	WriteToLog -logMessage "Loading offsets dictionary...done"
 }
 WriteToHost "Loading offsets dictionary...done"
-WriteToHost ""
+WriteToHost "" -noTS
 
 # Define memory ranges for each section of the binary file
 if ($log)
@@ -854,7 +1073,7 @@ if ($log)
 	WriteToLog -logMessage "Loading offset ranges...done"
 }
 WriteToHost "Loading offset ranges...done"
-WriteToHost ""
+WriteToHost "" -noTS
 
 # Check if the selected firmware version is valid
 if (-not $offsetsDictionary.ContainsKey($fwver)) {
@@ -924,14 +1143,14 @@ if ($log)
 	WriteToLog -logMessage "Reading binary file content in 0x4 byte chunks...done"
 }
 WriteToHost "Reading binary file content in 0x4 byte chunks...done"
-WriteToHost ""
+WriteToHost "" -noTS
 
 if ($log)
 {
 	WriteToLog -logMessage "Searching for gadgets..."
 }
 WriteToHost "Searching for gadgets..."
-WriteToHost ""
+WriteToHost "" -noTS
 
 # Search for each offset value in the offsets dictionary
 $summaryTable = @()
@@ -1058,7 +1277,7 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 				WriteToLog -logMessage "Found $formattedCount matches for $($offset.Name)."
 			}
 			WriteToHost "Found $formattedCount matches for $($offset.Name)."
-			WriteToHost ""
+			WriteToHost "" -noTS
 
 			# Add a summary of the results to the summary table
 			$summaryTable += [PSCustomObject]@{
@@ -1071,7 +1290,7 @@ foreach ($offset in $currentDictionary.GetEnumerator()) {
 				WriteToLog -logMessage "No matches found for $($offset.Name)."
 			}
 			WriteToHost "No matches found for $($offset.Name)."
-			WriteToHost ""
+			WriteToHost "" -noTS
 		}
 	}
 }
@@ -1084,7 +1303,7 @@ if ($replace -and $newfw)
 		WriteToLog -logMessage "Writing replaced bytes to $($filename)"
 		#WriteToLog -logMessage "Writing $([string]::Join(', ', ($chunkedFileContent | ForEach-Object { '0x{0:X8}' -f $_ }))) to $($filename)."
 	}
-	#WriteToHost ""
+	#WriteToHost "" -noTS
 	WriteNewBytes -chunkedContent $chunkedFileContent -inputFile $filename
 }
 
@@ -1092,6 +1311,8 @@ if ($replace -and $newfw)
 if ($log)
 {
 	WriteToLog -logMessage "Searching for gadgets...done"
+	WriteToLog -logMessage "" -noTS
+	WriteToLog -logMessage "" -noTS
 }
 WriteToHost "Searching for gadgets...done"
 WriteToHost "" -noTS
@@ -1103,6 +1324,7 @@ if ($foundOffsets.Count -gt 0) {
 	if ($log)
 	{
 		WriteToLog -logMessage "Found gadget offsets and values summary" -noTS
+		WriteToLog -logMessage "" -noTS
 	}
     WriteToHost "Found gadget offsets and values summary" -noTS
     WriteToHost "" -noTS
@@ -1111,6 +1333,7 @@ if ($foundOffsets.Count -gt 0) {
 	if ($log)
 	{
 		WriteToLog -logMessage "Input file: $filename | Firmware version: ${fwver}" -noTS
+		WriteToLog -logMessage "" -noTS
 	}
     WriteToHost "Input file: $filename | Firmware version: ${fwver}" -noTS
     WriteToHost "" -noTS
@@ -1127,6 +1350,7 @@ if ($foundOffsets.Count -gt 0) {
 	if ($log)
 	{
 		WriteToLog -logMessage "Summary of instances for each gadget value:" -noTS
+		WriteToLog -logMessage "" -noTS
 	}
     WriteToHost "Summary of instances for each gadget value:" -noTS
     WriteToHost "" -noTS
@@ -1190,7 +1414,7 @@ if ($foundOffsets.Count -gt 0) {
 			WriteToLog -logMessage "Saving results to $outputFilename...done"
 		}
         WriteToHost "Saving results to $outputFilename...done"
-        WriteToHost ""
+        WriteToHost "" -noTS
     }
 
 	# Output the total count of found gadget offsets
