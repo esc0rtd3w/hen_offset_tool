@@ -8,6 +8,7 @@ param (
     [switch]$text,       # Text output switch
     [switch]$opcode,     # Text output matching gadgets with PPC code output
     [switch]$replace,    # Replace current offset values with values from another firmware
+    [switch]$check,      # Check firmware version inside binary file
     #[switch]$newfw,     # Only used with -replace switch to specify new fw version
 	[string]$newfw = $null,
     [switch]$log,        # Output everything to log file
@@ -97,6 +98,30 @@ function WriteToHost {
     }
 	
 	Write-Host $formattedHostMessage
+}
+
+function GetFirmwareVersion {
+    param (
+        [string]$inputFile
+    )
+
+    $offset = 0x84AAE
+    $bytesToRead = 2
+
+    $fileStream = New-Object System.IO.FileStream($inputFile, [System.IO.FileMode]::Open)
+    $binaryReader = New-Object System.IO.BinaryReader($fileStream)
+
+    try {
+        $fileStream.Position = $offset
+        $firmwareBytes = $binaryReader.ReadBytes($bytesToRead)
+        $firmwareVersion = '{0:X2}{1:X2}' -f $firmwareBytes[0], $firmwareBytes[1]
+    }
+    finally {
+        $binaryReader.Dispose()
+        $fileStream.Dispose()
+    }
+
+    return $firmwareVersion
 }
 
 # Default debug log file header
@@ -310,6 +335,17 @@ function ByteSequenceEqual($a, $b) {
 
 # Title and Info
 WriteToHost "`n`nPS3HEN Offset Tool v$version" -noTS
+
+# Check firmware version bytes
+if ($check) {
+    $firmwareVersion = GetFirmwareVersion -inputFile $filename
+	if ($log)
+	{
+		WriteToLog -logMessage "Firmware version bytes: $firmwareVersion`n" -noTS
+	}
+    WriteToHost "Firmware version bytes: $firmwareVersion`n" -noTS
+	exit 1
+}
 
 # Check switch to see if files should be compared
 if ($compare) {
