@@ -443,10 +443,10 @@ if ($compare) {
 
 # Check if the fwver parameter is provided, and prompt the user for it if it isn't
 if (-not $fwver) {
-	$fwtext = "`nSelect firmware version: 480C, 481C, 482C, 482D, 483C, 484C, 484D, 485C, 486C, 487C, 488C, 489C, 490C"
+	$fwtext = "`nSelect firmware version: 480C, 481C, 482C, 482D, 483C, 484C, 484D, 485C, 486C, 487C, 488C, 489C, 490C, 491C"
     do {
         $fwver = Read-Host -Prompt $fwtext
-    } while (-not ($fwver -eq "480C" -or $fwver -eq "481C" -or $fwver -eq "482C" -or $fwver -eq "482D" -or $fwver -eq "483C" -or $fwver -eq "484C" -or $fwver -eq "484D" -or $fwver -eq "485C" -or $fwver -eq "486C" -or $fwver -eq "487C" -or $fwver -eq "488C" -or $fwver -eq "489C" -or $fwver -eq "490C"))
+    } while (-not ($fwver -eq "480C" -or $fwver -eq "481C" -or $fwver -eq "482C" -or $fwver -eq "482D" -or $fwver -eq "483C" -or $fwver -eq "484C" -or $fwver -eq "484D" -or $fwver -eq "485C" -or $fwver -eq "486C" -or $fwver -eq "487C" -or $fwver -eq "488C" -or $fwver -eq "489C" -or $fwver -eq "490C" -or $fwver -eq "491C"))
 }
 
 if ($log)
@@ -1023,6 +1023,50 @@ $offsetsDictionary = @{
         "lv2_unk12" = "001D4AFC"
         "lv2_unk13" = "001D4C50"
         "lv2_unk14" = "0029481C"
+        "lv2_unk15" = "00670040"
+        "lv2_unk16" = "00670000"
+        "lv2_unk17" = "00670090"
+        "lv2_unk18" = "00672000"
+        "lv2_unk19" = "007E0000"
+        "lv2_unk20" = "007F0190"
+    }
+	"491C" = @{
+        "unk0_mr_r4_r29"  = "0057CE48"
+        "gadget_mod2_addr"  = "00013B74"
+        "unk4_ld_r0_r1"  = "00019D44"
+        "gadget_mod7_addr"  = "0001A6AC"
+        "unk3_sys_ppu_thread_create"  = "0001DCB0"
+        "unk2_stw_r3_r31"  = "00075480"
+        "gadget_mod3_addr"  = "000B8E00"
+        "gadget_mod4a_addr"  = "000D9684"
+        "gadget_mod8_addr"  = "002BACB8"
+        "gadget_mod4b_addr" = "0042C778"
+        "unk1_ld_r0_r1" = "00583044"
+        "gadget_mod1_addr" = "0060EFD8"
+        "unk6" = "006D9714"
+        "unk7_li_r3_0" = "006D9754"
+        "unk8" = "006D975C"
+        "unk9_set_r29" = "006EAA54"
+        "unk10_28b_sc" = "006EC938"
+        "unk11" = "0070784C"
+        "vsh_ps3hen_key_toc" = "0070786C"
+        "vsh_opd_patch+0x4" = "00096D60"
+        "unk12_lwz_r11_r3" = "00474750"
+        "TOC" = "006F5558"
+        "lv2_unk1"  = "00003F80"
+        "lv2_unk2"  = "0000BB78"
+        "lv2_unk3"  = "000137D8"
+        "lv2_unk4"  = "00020E98"
+        "lv2_unk5"  = "00025A34"
+        "lv2_unk6"  = "0004060C"
+        "lv2_unk7"  = "0005028C"
+        "lv2_unk8"  = "0007B410"
+        "lv2_unk9"  = "0012EF58"
+        "lv2_unk10" = "001648B8"
+        "lv2_unk11" = "00198468"
+        "lv2_unk12" = "001D4B04"
+        "lv2_unk13" = "001D4C58"
+        "lv2_unk14" = "00294828"
         "lv2_unk15" = "00670040"
         "lv2_unk16" = "00670000"
         "lv2_unk17" = "00670090"
